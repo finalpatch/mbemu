@@ -183,7 +183,7 @@ public:
 				r[ins.Rd] = op1 >>> op2;
 				break;
 			case 0b10000:		// BSRAI
-				r[ins.Rd] = op1 >> op2;
+				r[ins.Rd] = cast(int)op1 >> op2;
 				break;
 			case 0b100000:		// BSLLI
 				r[ins.Rd] = op1 << op2;
@@ -193,6 +193,22 @@ public:
 			}
 			pc += 4;
             break;
+		case 0b100100:			// SRA,SRC,SRL
+			switch (op2)
+			{
+			case 0b0000000000000001: // SRA
+				r[ins.Rd] = cast(int)op1 >> 1;
+				break;
+			case 0b0000000000100001: // SRC
+				r[ins.Rd] = (op1 >>> 1) | (C ? 0x80000000 : 0);
+				break;
+			case 0b0000000001000001: // SRL
+				r[ins.Rd] = op1 >>> 1;
+				break;
+			}
+			C = op1 & 0x1;
+			pc += 4;
+            break;
 		case 0b011001:			// BSRLI,BSRAI,BSLLI
 			switch(op2 >> 5)
 			{
@@ -200,7 +216,7 @@ public:
 				r[ins.Rd] = op1 >>> (op2 & 0b11111);
 				break;
 			case 0b10000:		// BSRAI
-				r[ins.Rd] = op1 >> (op2 & 0b11111);
+				r[ins.Rd] = cast(int)op1 >> (op2 & 0b11111);
 				break;
 			case 0b100000:		// BSLLI
 				r[ins.Rd] = op1 << (op2 & 0b11111);
