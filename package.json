@@ -5,4 +5,5 @@
 	"authors": ["fengl"],
 	"dependencies": {
 	},
+	"versions" : [ "BigEndianMicroBlaze" ]
 }

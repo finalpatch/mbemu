@@ -26,11 +26,17 @@ public:
 	uint size() { return cast(uint)m_words.length * 4; }
 	uint readWord(uint addr)
 	{
-		return swapEndian(m_words[(addr - m_base)/4]);
+		version(BigEndianMicroBlaze)
+			return swapEndian(m_words[(addr - m_base)/4]);
+		else
+			return m_words[(addr - m_base)/4];
 	}
 	void writeWord(uint addr, uint data)
 	{
-		m_words[(addr - m_base)/4] = swapEndian(data);
+		version(BigEndianMicroBlaze)
+			m_words[(addr - m_base)/4] = swapEndian(data);
+		else
+			m_words[(addr - m_base)/4] = data;
 	}
 	ubyte readByte(uint addr)
 	{

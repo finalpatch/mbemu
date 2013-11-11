@@ -7,8 +7,6 @@ import std.conv;
 
 import mbemu.mem;
 
-version = ElfEndianSwap;
-
 // Elf data types
 private alias uint		Elf32_Addr;
 private alias uint		Elf32_Off;
@@ -51,7 +49,7 @@ struct Elf32_Ehdr {
 
 	void fixEndian()
 	{
-		version(ElfEndianSwap)
+		version(BigEndianMicroBlaze)
 		{
 			swapEndianInplace(e_type);
 			swapEndianInplace(e_machine);
@@ -85,7 +83,7 @@ struct Elf32_Shdr {
 
 	void fixEndian()
 	{
-		version(ElfEndianSwap)
+		version(BigEndianMicroBlaze)
 		{
 			swapEndianInplace(sh_name);
 			swapEndianInplace(sh_type);

@@ -7,9 +7,6 @@ import std.string;
 import std.typecons;
 import mbemu.mem;
 
-//version = TraceInstructions;
-version = BigEndianMicroBlaze;
-
 struct Instruction
 {
 	union
@@ -32,7 +29,7 @@ public:
 	uint     pc;
 	union
 	{
-		uint msr;
+		uint msr;		
 		mixin(bitfields!(bool, "CC" , 1,
 						 uint, "RESERVED", 16,
 						 bool, "VMS", 1,
