@@ -193,22 +193,6 @@ public:
 			}
 			pc += 4;
             break;
-		case 0b100100:			// SRA,SRC,SRL
-			switch (op2)
-			{
-			case 0b0000000000000001: // SRA
-				r[ins.Rd] = cast(int)op1 >> 1;
-				break;
-			case 0b0000000000100001: // SRC
-				r[ins.Rd] = (op1 >>> 1) | (C ? 0x80000000 : 0);
-				break;
-			case 0b0000000001000001: // SRL
-				r[ins.Rd] = op1 >>> 1;
-				break;
-			}
-			C = op1 & 0x1;
-			pc += 4;
-            break;
 		case 0b011001:			// BSRLI,BSRAI,BSLLI
 			switch(op2 >> 5)
 			{
@@ -469,13 +453,32 @@ public:
 			r[ins.Rd] = (op1 == op2) ? 0 : 1;
 			pc += 4;
 			break;
-		case 0b100100:			// SEXT8, SEXT16
-			if (op2 & 1)
-				r[ins.Rd] = cast(int)(cast(short)op1);
-			else 
+		case 0b100100:			// SRA,SRC,SRL
+			switch (op2)
+			{
+			case 0b0000000000000001: // SRA
+				r[ins.Rd] = cast(int)op1 >> 1;
+				C = op1 & 0x1;
+				break;
+			case 0b0000000000100001: // SRC
+				r[ins.Rd] = (op1 >>> 1) | (C ? 0x80000000 : 0);
+				C = op1 & 0x1;
+				break;
+			case 0b0000000001000001: // SRL
+				r[ins.Rd] = op1 >>> 1;
+				C = op1 & 0x1;
+				break;
+			case 0b0000000001100000: // SEXT8
 				r[ins.Rd] = cast(int)(cast(byte)op1);
+				break;
+			case 0b0000000001100001: // SEXT16
+				r[ins.Rd] = cast(int)(cast(short)op1);
+				break;
+			default:
+				unknownInstruction(ins);
+			}
 			pc += 4;
-			break;
+            break;
 		case 0b100101:			// MTS
 			switch(ins.Imm)
 			{
