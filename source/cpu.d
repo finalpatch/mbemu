@@ -453,8 +453,8 @@ public:
 			r[ins.Rd] = (op1 == op2) ? 0 : 1;
 			pc += 4;
 			break;
-		case 0b100100:			// SRA,SRC,SRL
-			switch (op2)
+		case 0b100100:			// SRA,SRC,SRL,SEXT8,SEXT16
+			switch (ins.Imm)
 			{
 			case 0b0000000000000001: // SRA
 				r[ins.Rd] = cast(int)op1 >> 1;
