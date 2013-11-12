@@ -13,18 +13,16 @@ void main(string[] args)
         return;
     }
 
-    auto mem = new MemorySpace(new Console(),
-                               new InterruptController(),
-                               new SDRAM(0, 65536*4));
-
-    auto cpu = new CPU(mem, ()=>mem.readByte(0xfffffff0)!=0);
+	auto fpga = new FPGA();
+    auto mem = new MemorySpace(fpga, new Console(), new SDRAM(0, 65536*4));
+    auto cpu = new CPU(mem, ()=>fpga.registers[FPGA.interruptStatus]!=0);
     
     cpu.pc = loadElf(args[1], mem);
     while(cpu.tick())
     {
         if (cpu.pc == 0x50)
         {
-            mem.writeByte(0xfffffff0, 1);
+            fpga.registers[FPGA.interruptStatus] = 1;
         }
     }
 }

@@ -1,6 +1,7 @@
 module mbemu.fpga;
 import mbemu.mem;
 import std.stdio;
+import std.bitmanip;
 
 class Console : MemoryRange
 {
@@ -21,22 +22,47 @@ class Console : MemoryRange
     }
 }
 
-class InterruptController : MemoryRange
+class FPGA : MemoryRange
 {
-    private bool interrupt = false;
-    
-    uint base() { return 0xfffffff0; }
-    uint size() { return 1; }
-    
-    uint readWord(uint addr) {return 0;}
-    void writeWord(uint addr, uint data) {}
-    
-    ubyte readByte(uint addr)
+public:
+	uint base() { return 0xfffffff0; }
+    uint size() { return 10; }
+
+	enum {
+		interruptStatus,
+		timerCounter,
+		timerSet,
+		frameBuffer0,
+		frameBuffer1,
+		numOfRegisters,
+	}
+	uint[numOfRegisters] registers;
+
+	// byte access disabled
+    ubyte readByte(uint addr) {return 0;}
+    void writeByte(uint addr, ubyte data) {}
+
+	// The FPGA uses native endian because byte access is not allowed
+    uint readWord(uint addr)
     {
-        return interrupt ? 1 : 0;
+		uint idx = addr - base();
+		return registers[idx];
     }
-    void writeByte(uint addr, ubyte data)
+    void writeWord(uint addr, uint data)
     {
-        interrupt = (data != 0);
+		uint idx = addr - base();
+		switch(idx)
+		{
+		case interruptStatus:
+			registers[idx] &= ~data;
+			break;
+		case timerSet:
+		case frameBuffer0:
+		case frameBuffer1:
+			registers[idx] = data;
+			break;
+		default:
+			break;
+		}
     }
 }

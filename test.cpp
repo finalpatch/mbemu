@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 volatile char* io = (char*)0xfffffffc;
-volatile char* intctl = (char*)0xfffffff0;
+volatile uint32_t* intctl = (uint32_t*)0xfffffff0;
 
 int main()
 {
@@ -16,7 +16,7 @@ int main()
 __attribute__ ((interrupt_handler))
 void isr()
 {
-	*intctl = 0;
+	*intctl = 1;
 	const static char msg[] = "isr\n";
 	for (const char* p = msg; *p; ++p)
 		*io = *p;
