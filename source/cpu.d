@@ -27,6 +27,8 @@ class CPU
 public:
 	uint[32] r;
 	uint     pc;
+	uint     slr = 0;				// stack low
+	uint     shr = ~0;				// stack high
 	union
 	{
 		uint msr;		
@@ -405,6 +407,8 @@ public:
 		case 0b111000:			// LBUI
 			{
 				uint addr = op1 + op2;
+				if (ins.Ra == 1)
+					checkStack(addr);
 				r[ins.Rd] = mem.readByte(addr);
 				// writefln("  read byte %x => %x", addr, r[ins.Rd]);
 			}
@@ -414,6 +418,8 @@ public:
 		case 0b111010:			// LWI
 			{
 				uint addr = op1 + op2;
+				if (ins.Ra == 1)
+					checkStack(addr);
 				r[ins.Rd] = mem.readWord(addr);
 				// writefln("  read word %x => %x", addr, r[ins.Rd]);
 			}
@@ -423,6 +429,8 @@ public:
 		case 0b111100:			// SBI
 			{
 				uint addr = op1 + op2;
+				if (ins.Ra == 1)
+					checkStack(addr);
 				mem.writeByte(addr, cast(byte)r[ins.Rd]);
 				// writefln("  write byte %x => %x", cast(byte)r[ins.Rd], addr);
 			}
@@ -432,6 +440,8 @@ public:
 		case 0b111110:			// SWI
 			{
 				uint addr = op1 + op2;
+				if (ins.Ra == 1)
+					checkStack(addr);
 				mem.writeWord(addr, r[ins.Rd]);
 				// writefln("  write word %x => %x", r[ins.Rd], addr);
 			}
@@ -441,6 +451,8 @@ public:
 		case 0b111001:			// LHUI
 			{
 				uint addr = op1 + op2;
+				if (ins.Ra == 1)
+					checkStack(addr);
 				auto b1 = mem.readByte(addr);
 				auto b2 = mem.readByte(addr+1);
 				version (BigEndianMicroBlaze)
@@ -506,12 +518,24 @@ public:
 				case 3:				// MTS
 					if (op2 == 1)
 						msr = op1;
+					else if (op2 == 2048)
+						slr = op1;
+					else if (op2 == 2050)
+						shr = op1;
+					else
+						unknownInstruction(ins);
 					break;
 				case 2:				// MFS
 					if (op2 == 0)
 						r[ins.Rd] = pc;
 					else if (op2 == 1)
 						r[ins.Rd] = msr;
+					else if (op2 == 2048)
+						r[ins.Rd] = slr;
+					else if (op2 == 2050)
+						r[ins.Rd] = shr;
+					else
+						unknownInstruction(ins);
 					break;
 				case 0:
 					r[ins.Rd] = msr;
@@ -556,4 +580,10 @@ private:
     {
         throw new Exception(format("unknown instruction %x @%x", ins.insword, pc));
     }
+
+	void checkStack(uint addr)
+	{
+		if (addr < slr || addr > shr)
+			throw new Exception(format("stack violation [%x] @%x", addr, pc));
+	}
 }
