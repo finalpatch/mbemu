@@ -583,7 +583,10 @@ private:
 
 	void checkStack(uint addr)
 	{
-		if (addr < slr || addr > shr)
-			throw new Exception(format("stack violation [%x] @%x", addr, pc));
+		version (StackProtector)
+		{
+			if (addr < slr || addr > shr)
+				throw new Exception(format("stack violation [%x] @%x", addr, pc));
+		}
 	}
 }
