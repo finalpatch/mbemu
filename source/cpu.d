@@ -7,17 +7,22 @@ import std.string;
 import std.typecons;
 import mbemu.mem;
 
+// Versions:
+// * BigEndianMicroBlaze
+// * TraceInstructions
+// * StackProtector
+
 struct Instruction
 {
     union
     {
         uint insword;
         mixin(bitfields!(uint, "filler1", 11,
-                         uint, "Rb", 5,
-                         uint, "Ra", 5,
-                         uint, "Rd", 5,
-                         uint, "Opcode", 6));
-        mixin(bitfields!(uint, "Imm", 16,
+                         uint, "Rb",       5,
+                         uint, "Ra",       5,
+                         uint, "Rd",       5,
+                         uint, "Opcode",   6));
+        mixin(bitfields!(uint, "Imm",     16,
                          uint, "filler2", 16));
     };
 }
@@ -31,7 +36,7 @@ public:
     uint     shr = ~0;              // stack high
     union
     {
-        uint msr;       
+        uint msr;
         mixin(bitfields!(bool, "BE" , 1,
                          bool, "IE" , 1,
                          bool, "C"  , 1,
@@ -51,11 +56,6 @@ public:
                          bool, "CC" , 1));
     }
 
-    bool delegate() interrupt;
-
-    Nullable!uint immExt;
-    Nullable!Instruction delaySlot;
-
     this(MemorySpace m, bool delegate() interruptSource = null)
     {
         mem = m;
@@ -64,12 +64,6 @@ public:
 
     bool tick()
     {
-        version(TraceInstructions)
-        {
-            auto indentstr = new char[nesting*2];
-            indentstr[] = ' ';
-        }
-
         if (delaySlot.isNull)
         {
             if (IE && !BIP && !EIP && immExt.isNull && interrupt && interrupt())
@@ -77,30 +71,25 @@ public:
                 r[14] = pc;
                 IE = false;
                 pc = 0x10;
-                nesting++;
+                ++trace;
             }
 
-            immutable ins = cast(Instruction)mem.readWord(pc);
-            version(TraceInstructions)
-            {
-                writefln("%s%x: %x", indentstr, pc, ins.insword);
-            }
+            auto ins = cast(Instruction)mem.readWord(pc);
+            trace(pc, ins);
+            pc += 4;
             if (ins.insword == 0xb8000000) // bri 0
             {
-                
-                version(TraceInstructions)
-                    writeln("halt");
+                trace.halt();
                 return false;
             }
             execute(ins);
         }
         else
         {
-            version(TraceInstructions)
-                writefln("%sdelayslot: %x", indentstr, delaySlot.insword);
-            execute(delaySlot);
+            auto ins = cast(Instruction)mem.readWord(delaySlot);
+            trace(delaySlot, ins);
+            execute(ins);
             delaySlot.nullify();
-            pc -= 4;
         }
         return true;
     }
@@ -127,7 +116,6 @@ public:
                 r[ins.Rd] += 1;
             if ((ins.Opcode & 0b100) == 0) // K
                 C = (sum > 0xffffffff);
-            pc += 4;
             break;
         case 0b000001:          // RSUB
         case 0b000011:          // RSUBC
@@ -142,31 +130,20 @@ public:
                 r[ins.Rd] = op2 + ~op1 + 1;
             if ((ins.Opcode & 0b100) == 0) // K
                 C = cast(int)op2 < cast(int)op1;
-            pc += 4;
             break;
-            
         case 0b000101:          // CMP,CMPU,RSUBK
             {
-                r[ins.Rd] = op2 + ~op1 + 1;
-                switch(ins.filler1)
+                r[ins.Rd] = op2 + ~op1 + 1; // RSUBK
+                if (ins.filler1 != 0)
                 {
-                case 1:             // CMP
-                    if (cast(int)op2 >= cast(int)op1)
+                    if ((ins.filler1 == 1) ?
+                        (cast(int)op2 >= cast(int)op1) : // CMP
+                        (op2 >= op1))                    // CMPU
                         r[ins.Rd] &= 0x7fffffff;
                     else
                         r[ins.Rd] |= 0x80000000;
-                    break;
-                case 3:             // CMPU
-                    if (op2 >= op1)
-                        r[ins.Rd] &= 0x7fffffff;
-                    else
-                        r[ins.Rd] |= 0x80000000;
-                    break;
-                default:            // RSUBK
-                    break;
                 }
             }
-            pc += 4;
             break;
         case 0b010000:          // MUL,MULH,MULHU,MULHSU
             switch(ins.filler1)
@@ -186,50 +163,34 @@ public:
             default:
                 unknownInstruction(ins);
             }
-            pc += 4;
             break;
         case 0b011000:          // MULI
             r[ins.Rd] = op1 * op2;
-            pc += 4;
             break;
         case 0b010001:          // BSRL,BSRA,BSLL
-            switch(ins.filler1 >> 5)
-            {
-            case 0:             // BSRLI
-                r[ins.Rd] = op1 >>> op2;
-                break;
-            case 0b10000:       // BSRAI
-                r[ins.Rd] = cast(int)op1 >> op2;
-                break;
-            case 0b100000:      // BSLLI
-                r[ins.Rd] = op1 << op2;
-                break;
-            default:
-                unknownInstruction(ins);
-            }
-            pc += 4;
-            break;
         case 0b011001:          // BSRLI,BSRAI,BSLLI
-            switch(op2 >> 5)
             {
-            case 0:             // BSRLI
-                r[ins.Rd] = op1 >>> (op2 & 0b11111);
-                break;
-            case 0b10000:       // BSRAI
-                r[ins.Rd] = cast(int)op1 >> (op2 & 0b11111);
-                break;
-            case 0b100000:      // BSLLI
-                r[ins.Rd] = op1 << (op2 & 0b11111);
-                break;
-            default:
-                unknownInstruction(ins);
+                uint selector = (ins.Opcode == 0b010001) ? (ins.filler1 >> 5) : (op2 >> 5);
+                uint shift = (ins.Opcode == 0b010001) ? op2 : (op2 & 0b11111);
+                switch(selector)
+                {
+                case 0:             // BSRLI
+                    r[ins.Rd] = op1 >>> shift;
+                    break;
+                case 0b10000:       // BSRAI
+                    r[ins.Rd] = cast(int)op1 >> shift;
+                    break;
+                case 0b100000:      // BSLLI
+                    r[ins.Rd] = op1 << shift;
+                    break;
+                default:
+                    unknownInstruction(ins);
+                }
             }
-            pc += 4;
             break;
         case 0b101000:          // ORI
             r[ins.Rd] = op1 | op2;
-            pc += 4;
-            break;          
+            break;
         case 0b100000:          // OR,PCMPBF
             if (ins.filler1 == 0)   // OR
             {
@@ -237,6 +198,7 @@ public:
             }
             else                // PCMPBF
             {
+                byte getByte(uint w, int n) { return 0xff & (w >> ((3 - n) * 8)); }
                 if (getByte(op2, 0) == getByte(op1, 0))
                     r[ins.Rd] = 1;
                 else if (getByte(op2, 1) == getByte(op1, 1))
@@ -248,45 +210,36 @@ public:
                 else
                     r[ins.Rd] = 0;
             }
-            pc += 4;
             break;
         case 0b100010:          // PCMPEQ, XOR
             if (ins.filler1 == 0)
-            {
                 r[ins.Rd] = op1 ^ op2;
-            }
             else
-            {
                 r[ins.Rd] = (op2 == op1) ? 1 : 0;
-            }
-            pc += 4;
             break;
         case 0b100001:          // AND
         case 0b101001:          // ANDI
             r[ins.Rd] = op1 & op2;
-            pc += 4;
             break;
         case 0b101010:          // XORI
             r[ins.Rd] = op1 ^ op2;
-            pc += 4;
             break;
         case 0b101100:          // IMM
             immExt = ins.Imm << 16;
-            pc += 4;
             break;
         case 0b101101:          // RTSD,RTID,RTBD,RTED
             switch(ins.Rd)
             {
             case 0b10000:       // RTSD
-                delaySlot = cast(Instruction)mem.readWord(pc+4);
-                nesting--;
+                delaySlot = pc;
                 pc = op1 + op2;
+                --trace;
                 break;
             case 0b10001:       // RTID
-                delaySlot = cast(Instruction)mem.readWord(pc+4);
-                nesting--;
+                delaySlot = pc;
                 pc = op1 + op2;
                 IE = true;
+                --trace;
                 break;
             case 0b10010:       // RTBD
                 throw new Exception("unimplemented instruction RTBD");
@@ -298,36 +251,27 @@ public:
             break;
         case 0b100110:          // BR,BRD,BRLD,BRA,BRAD,BRALD,BRK
         case 0b101110:          // BRI,BRID,BRLID,BRAI,BRAID,BRALID,BRKI
+            if (ins.Ra & 0b10000) // D
+                delaySlot = pc;
+            if (ins.Ra & 0b00100) // L
+            {
+                r[ins.Rd] = pc - 4;
+                ++trace;
+            }
             switch(ins.Ra)
             {
             case 0b00000:       // BRI
-                pc += op2;
-                break;
             case 0b10000:       // BRID
-                delaySlot = cast(Instruction)mem.readWord(pc+4);
-                pc += op2;
-                break;
             case 0b10100:       // BRLID
-                r[ins.Rd] = pc;
-                delaySlot = cast(Instruction)mem.readWord(pc+4);
-                nesting++;
-                pc += op2;
+                pc += op2 - 4;
                 break;
             case 0b01000:       // BRAI
-                pc = op2;
-                break;
             case 0b11000:       // BRAID
-                delaySlot = cast(Instruction)mem.readWord(pc+4);
-                pc = op2;
-                break;
             case 0b11100:       // BRALID
-                r[ins.Rd] = pc;
-                delaySlot = cast(Instruction)mem.readWord(pc+4);
-                nesting--;
                 pc = op2;
                 break;
             case 0b01100:       // BRKI
-                r[ins.Rd] = pc;
+                r[ins.Rd] = pc - 4;
                 pc = op2;
                 BIP = true;
                 break;
@@ -336,70 +280,42 @@ public:
             }
             break;
         case 0b101111:          // BEQI,BNEI,BLTI,BLEI,BGTI,BGEI,BEQID,BNEID,BLTID,BLEID,BGTID,BGEID
-            switch(ins.Rd & 0b1111)
             {
-            case 0b00000:       // BEQI
-                if (op1 == 0)
+                void doBranch()
                 {
                     if (ins.Rd & 0b10000)
-                        delaySlot = cast(Instruction)mem.readWord(pc+4);
-                    pc += op2;
+                        delaySlot = pc;
+                    pc += op2 - 4;
                 }
-                else
-                    pc += 4;
-                break;
-            case 0b00001:       // BNEI
-                if (op1 != 0)
+                switch(ins.Rd & 0b1111)
                 {
-                    if (ins.Rd & 0b10000)
-                        delaySlot = cast(Instruction)mem.readWord(pc+4);
-                    pc += op2;
+                case 0b00000:       // BEQI
+                    if (op1 == 0)
+                        doBranch();
+                    break;
+                case 0b00001:       // BNEI
+                    if (op1 != 0)
+                        doBranch();
+                    break;
+                case 0b00010:       // BLTI
+                    if (cast(int)op1 < 0)
+                        doBranch();
+                    break;
+                case 0b00011:       // BLEI
+                    if (cast(int)op1 <= 0)
+                        doBranch();
+                    break;
+                case 0b00100:       // BGTI
+                    if (cast(int)op1 > 0)
+                        doBranch();
+                    break;
+                case 0b00101:       // BGEI
+                    if (cast(int)op1 >= 0)
+                        doBranch();
+                    break;
+                default:
+                    unknownInstruction(ins);
                 }
-                else
-                    pc += 4;
-                break;
-            case 0b00010:       // BLTI
-                if (cast(int)op1 < 0)
-                {
-                    if (ins.Rd & 0b10000)
-                        delaySlot = cast(Instruction)mem.readWord(pc+4);
-                    pc += op2;
-                }
-                else
-                    pc += 4;
-                break;
-            case 0b00011:       // BLEI
-                if (cast(int)op1 <= 0)
-                {
-                    if (ins.Rd & 0b10000)
-                        delaySlot = cast(Instruction)mem.readWord(pc+4);
-                    pc += op2;
-                }
-                else
-                    pc += 4;
-                break;
-            case 0b00100:       // BGTI
-                if (cast(int)op1 > 0)
-                {
-                    if (ins.Rd & 0b10000)
-                        delaySlot = cast(Instruction)mem.readWord(pc+4);
-                    pc += op2;
-                }
-                else
-                    pc += 4;
-                break;
-            case 0b00101:       // BGEI
-                if (cast(int)op1 >= 0)
-                {
-                    if (ins.Rd & 0b10000)
-                        delaySlot = cast(Instruction)mem.readWord(pc+4);
-                    pc += op2;
-                }
-                else
-                    pc += 4;
-                break;
-            default:
-                unknownInstruction(ins);
             }
             break;
         case 0b110000:          // LBU
@@ -409,42 +325,7 @@ public:
                 if (ins.Ra == 1)
                     checkStack(addr);
                 r[ins.Rd] = mem.readByte(addr);
-                // writefln("  read byte %x => %x", addr, r[ins.Rd]);
             }
-            pc += 4;
-            break;
-        case 0b110010:          // LW
-        case 0b111010:          // LWI
-            {
-                uint addr = op1 + op2;
-                if (ins.Ra == 1)
-                    checkStack(addr);
-                r[ins.Rd] = mem.readWord(addr);
-                // writefln("  read word %x => %x", addr, r[ins.Rd]);
-            }
-            pc += 4;
-            break;
-        case 0b110100:          // SB
-        case 0b111100:          // SBI
-            {
-                uint addr = op1 + op2;
-                if (ins.Ra == 1)
-                    checkStack(addr);
-                mem.writeByte(addr, cast(byte)r[ins.Rd]);
-                // writefln("  write byte %x => %x", cast(byte)r[ins.Rd], addr);
-            }
-            pc += 4;
-            break;
-        case 0b110110:          // SW
-        case 0b111110:          // SWI
-            {
-                uint addr = op1 + op2;
-                if (ins.Ra == 1)
-                    checkStack(addr);
-                mem.writeWord(addr, r[ins.Rd]);
-                // writefln("  write word %x => %x", r[ins.Rd], addr);
-            }
-            pc += 4;
             break;
         case 0b110001:          // LHU
         case 0b111001:          // LHUI
@@ -459,7 +340,24 @@ public:
                 else // Little endian
                     r[ins.Rd] = (b2 << 8) | b1;
             }
-            pc += 4;
+            break;
+        case 0b110010:          // LW
+        case 0b111010:          // LWI
+            {
+                uint addr = op1 + op2;
+                if (ins.Ra == 1)
+                    checkStack(addr);
+                r[ins.Rd] = mem.readWord(addr);
+            }
+            break;
+        case 0b110100:          // SB
+        case 0b111100:          // SBI
+            {
+                uint addr = op1 + op2;
+                if (ins.Ra == 1)
+                    checkStack(addr);
+                mem.writeByte(addr, cast(byte)r[ins.Rd]);
+            }
             break;
         case 0b110101:          // SH
         case 0b111101:          // SHI
@@ -477,11 +375,18 @@ public:
                     mem.writeByte(addr+1, word >> 8);
                 }
             }
-            pc += 4;
+            break;
+        case 0b110110:          // SW
+        case 0b111110:          // SWI
+            {
+                uint addr = op1 + op2;
+                if (ins.Ra == 1)
+                    checkStack(addr);
+                mem.writeWord(addr, r[ins.Rd]);
+            }
             break;
         case 0b100011:          // PCMPNE
             r[ins.Rd] = (op1 == op2) ? 0 : 1;
-            pc += 4;
             break;
         case 0b100100:          // SRA,SRC,SRL,SEXT8,SEXT16
             switch (ins.Imm)
@@ -507,7 +412,6 @@ public:
             default:
                 unknownInstruction(ins);
             }
-            pc += 4;
             break;
         case 0b100101:          // MTS,MFS,MSRCLR,MSRSET
             {
@@ -526,7 +430,7 @@ public:
                     break;
                 case 2:             // MFS
                     if (op2 == 0)
-                        r[ins.Rd] = pc;
+                        r[ins.Rd] = pc - 4;
                     else if (op2 == 1)
                         r[ins.Rd] = msr;
                     else if (op2 == 2048)
@@ -548,7 +452,6 @@ public:
                     break;
                 }
             }
-            pc += 4;
             break;
         default:
             unknownInstruction(ins);
@@ -556,10 +459,11 @@ public:
     }
 
 private:
+    Nullable!uint immExt;
+    Nullable!uint delaySlot;
+    bool delegate() interrupt;
     MemorySpace mem;
-    int nesting = 0;
-
-    final byte getByte(uint w, int n) pure { return 0xff & (w >> ((3 - n) * 8)); }
+    Tracer trace;
 
     final int getImm(Instruction ins)
     {
@@ -575,17 +479,45 @@ private:
         }
     }
 
-    void unknownInstruction(Instruction ins)
+    final void unknownInstruction(Instruction ins)
     {
         throw new Exception(format("unknown instruction %x @%x", ins.insword, pc));
     }
 
-    void checkStack(uint addr)
+    final void checkStack(uint addr)
     {
         version (StackProtector)
         {
             if (addr < slr || addr > shr)
                 throw new Exception(format("stack violation [%x] @%x", addr, pc));
         }
+    }
+}
+
+struct Tracer
+{
+    char[] indent;
+    void opUnary(string op)() if( op =="++")
+    {
+        version(TraceInstructions)
+        {
+            indent.length += 2;
+            indent[$-2..$] = ' ';
+        }
+    }
+    void opUnary(string op)() if( op =="--")
+    {
+        version(TraceInstructions)
+            indent = indent[0..$-2];
+    }
+    void opCall(uint addr, Instruction ins)
+    {
+        version(TraceInstructions)
+            writefln("%s%x: %x", indent, addr, ins.insword);
+    }
+    void halt()
+    {
+        version(TraceInstructions)
+            writeln("halt");
     }
 }
