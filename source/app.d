@@ -3,6 +3,7 @@ import std.bitmanip;
 import mbemu.cpu;
 import mbemu.mem;
 import mbemu.elf;
+import mbemu.fpga;
 
 void main(string[] args)
 {
