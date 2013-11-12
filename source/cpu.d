@@ -30,40 +30,55 @@ public:
 	union
 	{
 		uint msr;		
-		mixin(bitfields!(bool, "CC" , 1,
-						 uint, "RESERVED", 16,
-						 bool, "VMS", 1,
-						 bool, "VM" , 1,
-						 bool, "UMS", 1,
-						 bool, "UM" , 1,
-						 bool, "PVR", 1,
-						 bool, "EIP", 1,
-						 bool, "EE" , 1,
-						 bool, "DCE", 1,
-						 bool, "DZO", 1,
-						 bool, "ICE", 1,
-						 bool, "FSL", 1,
-						 bool, "BIP", 1,
-						 bool, "C"  , 1,
+		mixin(bitfields!(bool, "BE" , 1,
 						 bool, "IE" , 1,
-						 bool, "BE" , 1));
+						 bool, "C"  , 1,
+						 bool, "BIP", 1,
+						 bool, "FSL", 1,
+						 bool, "ICE", 1,
+						 bool, "DZO", 1,
+						 bool, "DCE", 1,
+						 bool, "EE" , 1,
+						 bool, "EIP", 1,
+						 bool, "PVR", 1,
+						 bool, "UM" , 1,
+						 bool, "UMS", 1,
+						 bool, "VM" , 1,
+						 bool, "VMS", 1,
+						 uint, "RESERVED", 16,
+						 bool, "CC" , 1));
 	}
+
+	bool delegate() interrupt;
 
 	Nullable!uint immExt;
 	Nullable!Instruction delaySlot;
 
-	this(MemorySpace m)
+	this(MemorySpace m, bool delegate() interruptSource = null)
 	{
 		mem = m;
+		interrupt = interruptSource;
 		delaySlot.nullify();
 	}
 
 	bool tick()
 	{
-		auto indentstr = new char[indent];
-		indentstr[] = ' ';
+		version(TraceInstructions)
+		{
+			auto indentstr = new char[nesting*2];
+			indentstr[] = ' ';
+		}
+
 		if (delaySlot.isNull)
 		{
+			if (IE && !BIP && !EIP && immExt.isNull && interrupt && interrupt())
+			{
+				r[14] = pc;
+				IE = false;
+				pc = 0x10;
+				nesting++;
+			}
+
 			immutable ins = cast(Instruction)mem.readWord(pc);
 			version(TraceInstructions)
 			{
@@ -124,10 +139,10 @@ public:
 				r[ins.Rd] = op2 + ~op1 + C ? 1 : 0;
 			else
 				r[ins.Rd] = op2 + ~op1 + 1;
-			if ((ins.Opcode & 0b100) == 0) // K
-				C = op2 < op1;
-			pc += 4;
-			break;
+					if ((ins.Opcode & 0b100) == 0) // K
+						C = op2 < op1;
+					pc += 4;
+					break;
 			
 		case 0b000101:			// CMP,CMPU,RSUBK
 			{
@@ -263,11 +278,15 @@ public:
 			{
 			case 0b10000:		// RTSD
 				delaySlot = cast(Instruction)mem.readWord(pc+4);
-				indent-=2;
+				nesting--;
 				pc = op1 + op2;
 				break;
 			case 0b10001:		// RTID
-				throw new Exception("unimplemented instruction RTID");
+				delaySlot = cast(Instruction)mem.readWord(pc+4);
+				nesting--;
+				pc = op1 + op2;
+				IE = true;
+				break;
 			case 0b10010:		// RTBD
 				throw new Exception("unimplemented instruction RTBD");
 			case 0b10100:		// RTED
@@ -290,7 +309,7 @@ public:
 			case 0b10100:		// BRLID
 				r[ins.Rd] = pc;
 				delaySlot = cast(Instruction)mem.readWord(pc+4);
-				indent+=2;
+				nesting++;
 				pc += op2;
 				break;
 			case 0b01000:		// BRAI
@@ -303,7 +322,7 @@ public:
 			case 0b11100:		// BRALID
 				r[ins.Rd] = pc;
 				delaySlot = cast(Instruction)mem.readWord(pc+4);
-				indent+=2;
+				nesting--;
 				pc = op2;
 				break;
 			case 0b01100:		// BRKI
@@ -479,16 +498,32 @@ public:
 			}
 			pc += 4;
             break;
-		case 0b100101:			// MTS
-			switch(ins.Imm)
+		case 0b100101:			// MTS,MFS,MSRCLR,MSRSET
 			{
-			case 0x0001:
-				msr = op1;
-				break;
-			default:
-				version(TraceInstructions)
-					writefln("unsupported MTS %x", ins.Imm);
-				break;
+				op2 = ins.Imm & 0x3fff;
+				switch(ins.Imm >>> 14)
+				{
+				case 3:				// MTS
+					if (op2 == 1)
+						msr = op1;
+					break;
+				case 2:				// MFS
+					if (op2 == 0)
+						r[ins.Rd] = pc;
+					else if (op2 == 1)
+						r[ins.Rd] = msr;
+					break;
+				case 0:
+					r[ins.Rd] = msr;
+					if (ins.Ra == 1) // MSRCLR
+						msr &= ~op2;
+					else			// MSRSET
+						msr |= op2;
+					break;
+				default:
+					unknownInstruction(ins);
+					break;
+				}
 			}
 			pc += 4;
 			break;
@@ -499,7 +534,7 @@ public:
 
 private:
 	MemorySpace mem;
-	int indent = 0;
+	int nesting = 0;
 
 	final byte getByte(uint w, int n) pure { return 0xff & (w >> ((3 - n) * 8)); }
 

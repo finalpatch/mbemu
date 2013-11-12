@@ -14,6 +14,43 @@ interface MemoryRange
 	void  writeByte(uint addr, ubyte data);
 }
 
+class MemorySpace
+{
+public:
+	this(MemoryRange[] ranges ...)
+	{
+		mem = ranges;
+	}
+	uint readWord(uint addr)
+	{
+		return findMemRange(addr).readWord(addr);
+	}
+	void writeWord(uint addr, uint data)
+	{
+		findMemRange(addr).writeWord(addr, data);
+	}
+	ubyte readByte(uint addr)
+	{
+		return findMemRange(addr).readByte(addr);
+	}
+	void writeByte(uint addr, ubyte data)
+	{
+		findMemRange(addr).writeByte(addr, data);
+	}
+private:
+	MemoryRange[] mem;
+	
+	MemoryRange findMemRange(uint addr)
+	{
+		foreach (m; mem)
+		{
+			if (addr >= m.base() && addr < m.base() + m.size())
+				return m;
+		}
+		throw new Exception("invalid mem address %x".format(addr));
+	}
+}
+
 class SDRAM : MemoryRange
 {
 public:
@@ -72,39 +109,22 @@ class Console : MemoryRange
 	}
 }
 
-class MemorySpace
+class InterruptController : MemoryRange
 {
-public:
-	this(MemoryRange[] ranges ...)
-	{
-		mem = ranges;
-	}
-	uint readWord(uint addr)
-	{
-		return findMemRange(addr).readWord(addr);
-	}
-	void writeWord(uint addr, uint data)
-	{
-		findMemRange(addr).writeWord(addr, data);
-	}
+	private bool interrupt = false;
+	
+	uint base() { return 0xfffffff0; }
+	uint size() { return 1; }
+	
+	uint readWord(uint addr) {return 0;}
+	void writeWord(uint addr, uint data) {}
+	
 	ubyte readByte(uint addr)
 	{
-		return findMemRange(addr).readByte(addr);
+		return interrupt ? 1 : 0;
 	}
 	void writeByte(uint addr, ubyte data)
 	{
-		findMemRange(addr).writeByte(addr, data);
-	}
-private:
-	MemoryRange[] mem;
-	
-	MemoryRange findMemRange(uint addr)
-	{
-		foreach (m; mem)
-		{
-			if (addr >= m.base() && addr < m.base() + m.size())
-				return m;
-		}
-		throw new Exception("invalid mem address %x".format(addr));
+		interrupt = (data != 0);
 	}
 }
