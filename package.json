@@ -1,9 +1,11 @@
 {
 	"name": "mbemu",
-	"description": "A minimal D application.",
-	"copyright": "Copyright © 2013, fengl",
-	"authors": ["fengl"],
+	"description": "A MicroBlaze CPU emulator.",
+	"copyright": "Copyright © 2013, Feng Li",
+	"authors": ["Feng Li"],
 	"dependencies": {
 	},
-	"versions" : [ "BigEndianMicroBlaze" ]
+	"versions" : [
+		"BigEndianMicroBlaze",
+	]
 }
