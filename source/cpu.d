@@ -136,11 +136,11 @@ public:
 		case 0b001101:			// RSUBIK
 		case 0b001111:			// RSUBIKC
 			if (ins.Opcode & 0b010) // C
-				r[ins.Rd] = op2 + ~op1 + C ? 1 : 0;
+				r[ins.Rd] = op2 + ~op1 + (C ? 1 : 0);
 			else
 				r[ins.Rd] = op2 + ~op1 + 1;
 					if ((ins.Opcode & 0b100) == 0) // K
-						C = op2 < op1;
+						C = cast(int)op2 < cast(int)op1;
 					pc += 4;
 					break;
 			
