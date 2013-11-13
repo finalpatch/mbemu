@@ -14,15 +14,12 @@ void main(string[] args)
     }
 
 	auto fpga = new FPGA();
-    auto mem = new MemorySpace(fpga, new Console(), new SDRAM(0, 65536*4));
-    auto cpu = new CPU(mem, ()=>fpga.registers[FPGA.interruptStatus]!=0);
+    auto mem = new MemorySpace(new Console(), fpga, new SDRAM(0, 65536*4));
+    auto cpu = new CPU(mem, ()=>fpga.reg[FPGA.InterruptStatus]!=0);
     
     cpu.pc = loadElf(args[1], mem);
     while(cpu.tick())
     {
-        if (cpu.pc == 0x50)
-        {
-            fpga.registers[FPGA.interruptStatus] = 1;
-        }
+		fpga.tick();
     }
 }

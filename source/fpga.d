@@ -25,18 +25,23 @@ class Console : MemoryRange
 class FPGA : MemoryRange
 {
 public:
-	uint base() { return 0xfffffff0; }
-    uint size() { return 10; }
+	uint base() { return 0xffffff00; }
+    uint size() { return NumOfRegisters * 4; }
 
 	enum {
-		interruptStatus,
-		timerCounter,
-		timerSet,
-		frameBuffer0,
-		frameBuffer1,
-		numOfRegisters,
+		TimerInterrupt,
 	}
-	uint[numOfRegisters] registers;
+
+	enum {
+		InterruptControl,
+		InterruptStatus,
+		TimerCounter,
+		TimerSet,
+		FrameBuffer0,
+		FrameBuffer1,
+		NumOfRegisters,
+	}
+	uint[NumOfRegisters] reg;
 
 	// byte access disabled
     ubyte readByte(uint addr) {return 0;}
@@ -45,24 +50,32 @@ public:
 	// The FPGA uses native endian because byte access is not allowed
     uint readWord(uint addr)
     {
-		uint idx = addr - base();
-		return registers[idx];
+		uint idx = (addr - base())/4;
+		return reg[idx];
     }
     void writeWord(uint addr, uint data)
     {
-		uint idx = addr - base();
+		uint idx = (addr - base())/4;
 		switch(idx)
 		{
-		case interruptStatus:
-			registers[idx] &= ~data;
+		case InterruptStatus:
+			reg[idx] &= ~data;
 			break;
-		case timerSet:
-		case frameBuffer0:
-		case frameBuffer1:
-			registers[idx] = data;
+		case TimerCounter:
+			// Timer cannot be assigned
 			break;
 		default:
+			reg[idx] = data;
 			break;
 		}
     }
+
+	void tick()
+	{
+		if(++reg[TimerCounter] == reg[TimerSet])
+		{
+			// trigger timer interrupt
+			reg[InterruptStatus] |= reg[InterruptControl] & (1 << TimerInterrupt);
+		}
+	}
 }
