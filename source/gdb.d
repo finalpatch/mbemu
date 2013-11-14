@@ -38,6 +38,23 @@ void handleGdbCommands(CPU cpu)
         resp ~= dumpRegister(cpu.msr);
         serverTid.send(resp);
     }
+    else if (cmd.startsWith("P"))
+    {
+        auto re = regex(r"P([0-9a-f]+)=([0-9a-f]+)");
+        auto m = match(cmd, re);
+        string sreg = m.captures[1];
+        string sval = m.captures[2];
+        auto reg = parse!uint(sreg, 16);
+        auto val = parse!uint(sval, 16);
+        switch(reg)
+        {
+        case 0x0: .. case 0x1f: cpu.r[reg] = val; break;
+        case 0x20: cpu.pc = val; break;
+        case 0x21: cpu.msr = val; break;
+        default: break;
+        }
+        serverTid.send("OK");
+    }
     else if (cmd == "c")
     {
         while (!breakpoints.canFind(cpu.pc))
@@ -46,7 +63,7 @@ void handleGdbCommands(CPU cpu)
     }
     else if (cmd.startsWith("m"))
     {
-        auto re = regex(r"m([0-9a-f]+),([0-9]+)");
+        auto re = regex(r"m([0-9a-f]+),([0-9a-f]+)");
         auto m = match(cmd, re);
         string saddr = m.captures[1];
         string ssize = m.captures[2];
@@ -59,7 +76,7 @@ void handleGdbCommands(CPU cpu)
     }
     else if (cmd.startsWith("Z0") || cmd.startsWith("z0"))
     {
-        auto re = regex(r"([zZ])0,([0-9a-f]+),([0-9]+)");
+        auto re = regex(r"([zZ])0,([0-9a-f]+),([0-9a-f]+)");
         auto m = match(cmd, re);
         string z = m.captures[1];
         string saddr = m.captures[2];
