@@ -70,12 +70,15 @@ public:
         }
     }
 
-    void tick()
+    void advanceClock(uint cycles)
     {
-        if(++reg[TimerCounter] == reg[TimerSet])
+        while(cycles--)
         {
-            // trigger timer interrupt
-            reg[InterruptStatus] |= reg[InterruptControl] & (1 << TimerInterrupt);
+            if(++reg[TimerCounter] == reg[TimerSet])
+            {
+                // trigger timer interrupt
+                reg[InterruptStatus] |= reg[InterruptControl] & (1 << TimerInterrupt);
+            }
         }
     }
 }

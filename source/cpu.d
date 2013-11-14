@@ -56,10 +56,13 @@ public:
                          bool, "CC" , 1));
     }
 
-    this(MemorySpace m, bool delegate() interruptSource = null)
+    this(MemorySpace m,
+         bool delegate() interruptSource = null,
+         void delegate(uint cycles) advanceClock = null)
     {
         mem = m;
         interrupt = interruptSource;
+        advclk = advanceClock;
     }
 
     bool tick()
@@ -91,6 +94,10 @@ public:
             execute(ins);
             delaySlot.nullify();
         }
+
+        if (advclk)
+            advclk(1);
+
         return true;
     }
 
@@ -465,9 +472,11 @@ public:
 private:
     Nullable!uint immExt;
     Nullable!uint delaySlot;
-    bool delegate() interrupt;
     MemorySpace mem;
     Tracer trace;
+
+    bool delegate() interrupt;
+    void delegate(uint cycles) advclk;
 
     final int getImm(Instruction ins)
     {

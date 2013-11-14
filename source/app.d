@@ -19,20 +19,13 @@ void main(string[] args)
 
     auto fpga = new FPGA();
     auto mem = new MemorySpace(new Console(), fpga, new SDRAM(0, 65536*4));
-    auto cpu = new CPU(mem, ()=>fpga.reg[FPGA.InterruptStatus]!=0);
+    auto cpu = new CPU(mem, ()=>fpga.reg[FPGA.InterruptStatus]!=0, &fpga.advanceClock);
     
     cpu.pc = loadElf(args[1], mem);
 
-    auto tick = delegate bool()
-        {
-            bool running = cpu.tick();
-            fpga.tick();
-            return running;
-        };
-    
     if (!dbg)
     {
-        while(tick())
+        while(cpu.tick())
         {}
     }
     else
@@ -42,7 +35,7 @@ void main(string[] args)
             stopGdbServer();
 
         while(true)
-            handleGdbCommands(cpu, tick);
+            handleGdbCommands(cpu);
     }
 }
 

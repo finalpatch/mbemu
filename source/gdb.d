@@ -8,9 +8,11 @@ import std.bitmanip;
 import std.regex;
 import std.conv;
 import mbemu.cpu;
-import mbemu.fpga;
 
-void handleGdbCommands(T)(CPU cpu, T tick)
+private __gshared TcpSocket server;
+private __gshared Tid serverTid;
+
+void handleGdbCommands(CPU cpu)
 {
     static uint[] breakpoints = [];
     
@@ -41,7 +43,7 @@ void handleGdbCommands(T)(CPU cpu, T tick)
     else if (cmd == "c")
     {
         while (!breakpoints.canFind(cpu.pc))
-            tick();
+            cpu.tick();
         serverTid.send("S05");
     }
     else if (cmd.startsWith("m"))
@@ -75,9 +77,6 @@ void handleGdbCommands(T)(CPU cpu, T tick)
         serverTid.send("");
     }
 }
-
-__gshared TcpSocket server;
-__gshared Tid serverTid;
 
 void startGdbServer(short port)
 {
