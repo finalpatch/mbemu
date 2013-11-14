@@ -17,7 +17,8 @@ void handleGdbCommands(CPU cpu)
     static uint[] breakpoints = [];
     
     auto cmd = receiveOnly!string();
-    writefln("gdb: %s", cmd);
+    version(TraceGdbPackets)
+        writefln("gdb: %s", cmd);
 
     if (cmd == "?")
     {
@@ -166,7 +167,8 @@ private void rspSend(Socket client, string resp)
 {
     auto checksum = (reduce!"a+b"(0, resp)) % 256;
     auto packet = "$%s#%02x".format(resp, checksum);
-    writefln("mb : %s", packet);
+    version(TraceGdbPackets)
+        writefln("mb : %s", packet);
     while (true) {
         client.send(packet);
         char[1] ack;
