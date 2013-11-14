@@ -467,7 +467,9 @@ public:
         }
     }
 
+    // for debugger support
     ubyte readMemByte(uint addr) { return mem.readByte(addr); }
+    void  writeMemByte(uint addr, ubyte data) { mem.writeByte(addr, data); }
 
 private:
     Nullable!uint immExt;

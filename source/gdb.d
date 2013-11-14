@@ -42,10 +42,8 @@ void handleGdbCommands(CPU cpu)
     {
         auto re = regex(r"P([0-9a-f]+)=([0-9a-f]+)");
         auto m = match(cmd, re);
-        string sreg = m.captures[1];
-        string sval = m.captures[2];
-        auto reg = parse!uint(sreg, 16);
-        auto val = parse!uint(sval, 16);
+        auto reg = m.captures[1].to!uint(16);
+        auto val = m.captures[2].to!uint(16);
         switch(reg)
         {
         case 0x0: .. case 0x1f: cpu.r[reg] = val; break;
@@ -65,22 +63,34 @@ void handleGdbCommands(CPU cpu)
     {
         auto re = regex(r"m([0-9a-f]+),([0-9a-f]+)");
         auto m = match(cmd, re);
-        string saddr = m.captures[1];
-        string ssize = m.captures[2];
-        auto addr = parse!uint(saddr, 16);
-        auto size = parse!uint(ssize, 16);
+        auto addr = m.captures[1].to!uint(16);
+        auto size = m.captures[2].to!uint(16);
         string resp;
         for (uint i = 0; i < size; ++i)
             resp ~= "%02x".format(cpu.readMemByte(addr + i));
         serverTid.send(resp);
     }
+    else if (cmd.startsWith("M"))
+    {
+        auto re = regex(r"M([0-9a-f]+),([0-9a-f]+):([0-9a-f]+)");
+        auto m = match(cmd, re);
+        auto addr = m.captures[1].to!uint(16);
+        auto size = m.captures[2].to!uint(16);
+        string sdata = m.captures[3];
+        for(uint i = 0; i < size; ++i)
+        {
+            ubyte data = sdata[0..2].to!ubyte(16);
+            cpu.writeMemByte(addr + i, data);
+            sdata = sdata[2..$];
+        }
+        serverTid.send("OK");
+    }
     else if (cmd.startsWith("Z0") || cmd.startsWith("z0"))
     {
         auto re = regex(r"([zZ])0,([0-9a-f]+),([0-9a-f]+)");
         auto m = match(cmd, re);
+        auto addr = m.captures[2].to!uint(16);
         string z = m.captures[1];
-        string saddr = m.captures[2];
-        auto addr = parse!uint(saddr, 16);
         if (z == "Z")
             breakpoints ~= addr;
         else
