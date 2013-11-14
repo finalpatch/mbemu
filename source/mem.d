@@ -88,3 +88,7 @@ private:
     uint   m_base;
     uint[] m_words;
 }
+
+// Local Variables:
+// indent-tabs-mode: nil
+// End:

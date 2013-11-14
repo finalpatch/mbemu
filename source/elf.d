@@ -149,3 +149,7 @@ uint loadElf(string filename, MemorySpace mem)
 
     return ehdr.e_entry;
 }
+
+// Local Variables:
+// indent-tabs-mode: nil
+// End:

@@ -100,7 +100,7 @@ public:
         uint op1 = r[ins.Ra];
         uint op2 = typeB ? getImm(ins) : r[ins.Rb];
 
-		r[0] = 0;				// make sure r0 is always zero
+        r[0] = 0;               // make sure r0 is always zero
 
         switch(ins.Opcode)
         {
@@ -460,7 +460,7 @@ public:
         }
     }
 
-	ubyte readMemByte(uint addr) { return mem.readByte(addr); }
+    ubyte readMemByte(uint addr) { return mem.readByte(addr); }
 
 private:
     Nullable!uint immExt;
@@ -525,3 +525,7 @@ struct Tracer
             writeln("halt");
     }
 }
+
+// Local Variables:
+// indent-tabs-mode: nil
+// End:

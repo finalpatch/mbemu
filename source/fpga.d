@@ -25,57 +25,61 @@ class Console : MemoryRange
 class FPGA : MemoryRange
 {
 public:
-	uint base() { return 0xffffff00; }
+    uint base() { return 0xffffff00; }
     uint size() { return NumOfRegisters * 4; }
 
-	enum {
-		TimerInterrupt,
-	}
+    enum {
+        TimerInterrupt,
+    }
 
-	enum {
-		InterruptControl,
-		InterruptStatus,
-		TimerCounter,
-		TimerSet,
-		FrameBuffer0,
-		FrameBuffer1,
-		NumOfRegisters,
-	}
-	uint[NumOfRegisters] reg;
+    enum {
+        InterruptControl,
+        InterruptStatus,
+        TimerCounter,
+        TimerSet,
+        FrameBuffer0,
+        FrameBuffer1,
+        NumOfRegisters,
+    }
+    uint[NumOfRegisters] reg;
 
-	// byte access disabled
+    // byte access disabled
     ubyte readByte(uint addr) {return 0;}
     void writeByte(uint addr, ubyte data) {}
 
-	// The FPGA uses native endian because byte access is not allowed
+    // The FPGA uses native endian because byte access is not allowed
     uint readWord(uint addr)
     {
-		uint idx = (addr - base())/4;
-		return reg[idx];
+        uint idx = (addr - base())/4;
+        return reg[idx];
     }
     void writeWord(uint addr, uint data)
     {
-		uint idx = (addr - base())/4;
-		switch(idx)
-		{
-		case InterruptStatus:
-			reg[idx] &= ~data;
-			break;
-		case TimerCounter:
-			// Timer cannot be assigned
-			break;
-		default:
-			reg[idx] = data;
-			break;
-		}
+        uint idx = (addr - base())/4;
+        switch(idx)
+        {
+        case InterruptStatus:
+            reg[idx] &= ~data;
+            break;
+        case TimerCounter:
+            // Timer cannot be assigned
+            break;
+        default:
+            reg[idx] = data;
+            break;
+        }
     }
 
-	void tick()
-	{
-		if(++reg[TimerCounter] == reg[TimerSet])
-		{
-			// trigger timer interrupt
-			reg[InterruptStatus] |= reg[InterruptControl] & (1 << TimerInterrupt);
-		}
-	}
+    void tick()
+    {
+        if(++reg[TimerCounter] == reg[TimerSet])
+        {
+            // trigger timer interrupt
+            reg[InterruptStatus] |= reg[InterruptControl] & (1 << TimerInterrupt);
+        }
+    }
 }
+
+// Local Variables:
+// indent-tabs-mode: nil
+// End:
