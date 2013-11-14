@@ -34,11 +34,9 @@ void handleGdbCommands(CPU cpu)
         {
             resp ~= dumpRegister(r);
         }
+        resp ~= dumpRegister(cpu.pc);
+        resp ~= dumpRegister(cpu.msr);
         serverTid.send(resp);
-    }
-    else if (cmd == "p20")
-    {
-        serverTid.send(dumpRegister(cpu.pc));
     }
     else if (cmd == "c")
     {
@@ -122,9 +120,15 @@ private void handleGdbClient(Tid owner, Socket client)
         
         if (cmd == "+")
             continue;
-            
-        owner.send(cmd[1..$-3].idup);
 
+        cmd = cmd[1..$-3];
+        if (cmd == "D")         // detach
+        {
+            client.rspSend("OK");
+            break;
+        }
+
+        owner.send(cmd.idup);
         auto resp = receiveOnly!string();
         client.rspSend(resp);
     }
