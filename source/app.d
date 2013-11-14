@@ -1,15 +1,19 @@
 import std.stdio;
-import std.bitmanip;
+import std.getopt;
 import mbemu.cpu;
 import mbemu.mem;
 import mbemu.elf;
 import mbemu.fpga;
+import mbemu.gdb;
 
 void main(string[] args)
 {
+	bool dbg;
+	getopt(args, "debug|d", &dbg);
+
     if (args.length < 2)
     {
-        writeln("Usage: mbemu xyz.elf");
+        writeln("Usage: mbemu [--debug] xyz.elf");
         return;
     }
 
@@ -18,8 +22,26 @@ void main(string[] args)
     auto cpu = new CPU(mem, ()=>fpga.reg[FPGA.InterruptStatus]!=0);
     
     cpu.pc = loadElf(args[1], mem);
-    while(cpu.tick())
-    {
-		fpga.tick();
-    }
+
+	auto tick = delegate bool()
+		{
+			bool running = cpu.tick();
+			fpga.tick();
+			return running;
+		};
+	
+	if (!dbg)
+	{
+		while(tick())
+		{}
+	}
+	else
+	{
+		startGdbServer(1234);
+		scope(exit)
+			stopGdbServer();
+
+		while(true)
+			handleGdbCommands(cpu, tick);
+	}
 }

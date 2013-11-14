@@ -460,6 +460,8 @@ public:
         }
     }
 
+	ubyte readMemByte(uint addr) { return mem.readByte(addr); }
+
 private:
     Nullable!uint immExt;
     Nullable!uint delaySlot;
