@@ -19,7 +19,10 @@ void main(string[] args)
 
     auto fpga = new FPGA();
     auto mem = new MemorySpace(new Console(), fpga, new SDRAM(0, 65536*4));
-    auto cpu = new CPU(mem, ()=>fpga.reg[FPGA.InterruptStatus]!=0, &fpga.advanceClock);
+    auto cpu = new CPU(mem);
+
+    cpu.interrupt = ()=>fpga.reg[FPGA.InterruptStatus]!=0;
+    cpu.advclk = &fpga.advanceClock;
     
     cpu.pc = loadElf(args[1], mem);
 
@@ -31,8 +34,7 @@ void main(string[] args)
     else
     {
         startGdbServer(1234);
-        scope(exit)
-            stopGdbServer();
+        scope(exit) stopGdbServer();
 
         while(true)
             handleGdbCommands(cpu);

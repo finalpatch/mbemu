@@ -56,13 +56,16 @@ public:
                          bool, "CC" , 1));
     }
 
-    this(MemorySpace m,
-         bool delegate() interruptSource = null,
-         void delegate(uint cycles) advanceClock = null)
+    // the cpu calls this delegate to check for interrupt signal every
+    // clock cycle
+    bool delegate() interrupt;
+    // the cpu calls this after every instruction with the instruction
+    // latency in number of cycles
+    void delegate(uint cycles) advclk;
+
+    this(MemorySpace m)
     {
         mem = m;
-        interrupt = interruptSource;
-        advclk = advanceClock;
     }
 
     bool tick()
@@ -418,15 +421,15 @@ public:
             case 0b0000000001100001: // SEXT16
                 r[ins.Rd] = cast(int)(cast(short)op1);
                 break;
-			case 0b0000000011100000: // CLZ
-				r[ins.Rd] = 0;
-				for(int i = 0; i < 32; ++i)
-				{
-					if ((op1 << i) & 0x80000000)
-						break;
-					r[ins.Rd]++;
-				}
-				break;
+            case 0b0000000011100000: // CLZ
+                r[ins.Rd] = 0;
+                for(int i = 0; i < 32; ++i)
+                {
+                    if ((op1 << i) & 0x80000000)
+                        break;
+                    r[ins.Rd]++;
+                }
+                break;
             default:
                 unknownInstruction(ins);
             }
@@ -485,9 +488,6 @@ private:
     Nullable!uint delaySlot;
     MemorySpace mem;
     Tracer trace;
-
-    bool delegate() interrupt;
-    void delegate(uint cycles) advclk;
 
     final int getImm(Instruction ins)
     {
