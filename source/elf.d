@@ -136,9 +136,9 @@ uint loadElf(string filename, MemorySpace mem)
 
         if (shdr.sh_type == SHT_PROGBITS)
         {
-            string sectionName = mmfile[stringTableHeader.sh_offset + shdr.sh_name .. stringTableHeader.sh_offset + stringTableHeader.sh_size].to!string;
+            string sectionName = (cast(char[])(mmfile[stringTableHeader.sh_offset + shdr.sh_name .. stringTableHeader.sh_offset + stringTableHeader.sh_size])).ptr.to!string;
 
-            if (sectionName.startsWith(".debug") || sectionName.startsWith(".comment"))
+            if (sectionName.startsWith(".debug") || sectionName==".comment")
                 continue;
 
             auto section = cast(ubyte[])mmfile[shdr.sh_offset .. shdr.sh_offset + shdr.sh_size];
