@@ -10,13 +10,16 @@ $ mb-g++ -mxl-barrel-shift -mxl-pattern-compare -mcpu=v8.20.a -mno-xl-soft-mul -
 -fno-exceptions -Wl,-defsym -Wl,_STACK_SIZE=4096 -Wl, -defsym -Wl,_HEAP_SIZE=8192
 -g -o test.elf test.cpp
 ```
+It is important to change the stack size to at least 2kb because printf() alone uses 1.5kb of stack space.
+Also make sure the emulator has the same endian as the program (define the 'BigEndianMicroBlaze' version
+to compile a big endian emulator).
 
 # Run the program in the emulator
 
 ```
 $ ./mbemu test.elf
 ```
-Or
+Or if you want to attach gdb to the emulator
 
 ```
 $ ./mbemu --debug test.elf
