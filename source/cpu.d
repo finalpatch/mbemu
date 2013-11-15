@@ -79,12 +79,12 @@ public:
 
             auto ins = cast(Instruction)mem.readWord(pc);
             trace(pc, ins);
-            pc += 4;
             if (ins.insword == 0xb8000000) // bri 0
             {
                 trace.halt();
                 return false;
             }
+            pc += 4;
             execute(ins);
         }
         else

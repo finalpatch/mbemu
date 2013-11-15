@@ -57,7 +57,13 @@ void handleGdbCommands(CPU cpu)
     else if (cmd == "c")
     {
         while (!breakpoints.canFind(cpu.pc))
-            cpu.tick();
+        {
+            if (!cpu.tick())
+            {
+                serverTid.send("S03");
+                return;
+            }
+        }
         serverTid.send("S05");
     }
     else if (cmd.startsWith("m"))
@@ -81,7 +87,12 @@ void handleGdbCommands(CPU cpu)
         for(uint i = 0; i < size; ++i)
         {
             ubyte data = sdata[0..2].to!ubyte(16);
-            cpu.writeMemByte(addr + i, data);
+            try
+            {
+                cpu.writeMemByte(addr + i, data);
+            }
+            catch(Exception)
+            {}
             sdata = sdata[2..$];
         }
         serverTid.send("OK");
