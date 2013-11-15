@@ -15,6 +15,29 @@ private __gshared Tid serverTid;
 void handleGdbCommands(CPU cpu)
 {
     static uint[] breakpoints = [];
+
+    struct DataBreakPoint
+    {
+        bool read;
+        bool write;
+        uint addr;
+        uint size;
+    }
+    static DataBreakPoint[] dataBreakpoints = [];
+    bool hitDataBreakpoint = false;
+    cpu.memaccess = delegate(bool write, uint addr, uint size)
+        {
+            foreach(b; dataBreakpoints)
+            {
+                if (addr < (b.addr + b.size) && b.addr < (addr + size))
+                {
+                    if (!write && b.read)
+                        hitDataBreakpoint = true;
+                    if (write && b.write)
+                        hitDataBreakpoint = true;
+                }
+            }
+        };
     
     auto cmd = receiveOnly!string();
     version(TraceGdbPackets)
@@ -63,6 +86,8 @@ void handleGdbCommands(CPU cpu)
                 serverTid.send("S03");
                 return;
             }
+            if (hitDataBreakpoint)
+                break;
         }
         serverTid.send("S05");
     }
@@ -97,16 +122,33 @@ void handleGdbCommands(CPU cpu)
         }
         serverTid.send("OK");
     }
-    else if (cmd.startsWith("Z0") || cmd.startsWith("z0"))
+    else if (cmd.startsWith("Z") || cmd.startsWith("z"))
     {
-        auto re = regex(r"([zZ])0,([0-9a-f]+),([0-9a-f]+)");
+        auto re = regex(r"([zZ])([0-4]),([0-9a-f]+),([0-9a-f]+)");
         auto m = match(cmd, re);
-        auto addr = m.captures[2].to!uint(16);
         string z = m.captures[1];
-        if (z == "Z")
-            breakpoints ~= addr;
+        string kind = m.captures[2];
+        auto addr = m.captures[3].to!uint(16);
+        auto size = m.captures[4].to!uint(16);
+        if ((kind == "0" || kind == "1")) // code breakpoint
+        {
+            if (z == "Z")
+                breakpoints ~= addr;
+            else
+                breakpoints = partition!(x=>(x==addr))(breakpoints);
+        }
         else
-            breakpoints = partition!(x=>(x==addr))(breakpoints);
+        {
+            DataBreakPoint bp;
+            bp.read = (kind == "3") || (kind == "4");
+            bp.write = (kind == "2") || (kind == "4");
+            bp.addr = addr;
+            bp.size = size;
+            if (z == "Z")
+                dataBreakpoints ~= bp;
+            else
+                dataBreakpoints = partition!(x=>(x==bp))(dataBreakpoints);
+        }
         serverTid.send("OK");
     }
     else

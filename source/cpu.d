@@ -62,6 +62,8 @@ public:
     // the cpu calls this after every instruction with the instruction
     // latency in number of cycles
     void delegate(uint cycles) advclk;
+    // gets called after memory access
+    void delegate(bool write, uint addr, uint size) memaccess;
 
     this(MemorySpace m)
     {
@@ -337,6 +339,8 @@ public:
                 if (ins.Ra == 1)
                     checkStack(addr);
                 r[ins.Rd] = mem.readByte(addr);
+                if (memaccess)
+                    memaccess(false, addr, 1);
             }
             break;
         case 0b110001:          // LHU
@@ -351,6 +355,8 @@ public:
                     r[ins.Rd] = (b1 << 8) | b2;
                 else // Little endian
                     r[ins.Rd] = (b2 << 8) | b1;
+                if (memaccess)
+                    memaccess(false, addr, 2);
             }
             break;
         case 0b110010:          // LW
@@ -360,6 +366,8 @@ public:
                 if (ins.Ra == 1)
                     checkStack(addr);
                 r[ins.Rd] = mem.readWord(addr);
+                if (memaccess)
+                    memaccess(false, addr, 4);
             }
             break;
         case 0b110100:          // SB
@@ -369,6 +377,8 @@ public:
                 if (ins.Ra == 1)
                     checkStack(addr);
                 mem.writeByte(addr, cast(byte)r[ins.Rd]);
+                if (memaccess)
+                    memaccess(true, addr, 1);
             }
             break;
         case 0b110101:          // SH
@@ -386,6 +396,8 @@ public:
                     mem.writeByte(addr, word & 0xff);
                     mem.writeByte(addr+1, word >> 8);
                 }
+                if (memaccess)
+                    memaccess(true, addr, 2);
             }
             break;
         case 0b110110:          // SW
@@ -395,6 +407,8 @@ public:
                 if (ins.Ra == 1)
                     checkStack(addr);
                 mem.writeWord(addr, r[ins.Rd]);
+                if (memaccess)
+                    memaccess(true, addr, 4);
             }
             break;
         case 0b100011:          // PCMPNE
