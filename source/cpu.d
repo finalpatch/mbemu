@@ -72,6 +72,7 @@ public:
 
     bool tick()
     {
+        uint latency;
         if (delaySlot.isNull)
         {
             if (IE && !BIP && !EIP && immExt.isNull && interrupt && interrupt())
@@ -90,29 +91,31 @@ public:
                 return false;
             }
             pc += 4;
-            execute(ins);
+            latency = execute(ins);
         }
         else
         {
             auto ins = cast(Instruction)mem.readWord(delaySlot);
             trace(delaySlot, ins);
-            execute(ins);
+            latency = execute(ins);
             delaySlot.nullify();
         }
 
         if (advclk)
-            advclk(1);
+            advclk(latency);
 
         return true;
     }
 
-    void execute(const Instruction ins)
+    uint execute(const Instruction ins)
     {
         bool typeB = (ins.Opcode & 0x8) != 0;
         uint op1 = r[ins.Ra];
         uint op2 = typeB ? getImm(ins) : r[ins.Rb];
 
         r[0] = 0;               // make sure r0 is always zero
+
+        uint latency = 1;       // most instructions have latency of 1 cycle
 
         switch(ins.Opcode)
         {
@@ -177,9 +180,13 @@ public:
             default:
                 unknownInstruction(ins);
             }
+            version(AreaOptimizedMicroBlaze)
+                latency = 3;
             break;
         case 0b011000:          // MULI
             r[ins.Rd] = op1 * op2;
+            version(AreaOptimizedMicroBlaze)
+                latency = 3;
             break;
         case 0b010001:          // BSRL,BSRA,BSLL
         case 0b011001:          // BSRLI,BSRAI,BSLLI
@@ -201,6 +208,8 @@ public:
                     unknownInstruction(ins);
                 }
             }
+            version(AreaOptimizedMicroBlaze)
+                latency = 2;
             break;
         case 0b101000:          // ORI
             r[ins.Rd] = op1 | op2;
@@ -262,6 +271,7 @@ public:
             default:
                 unknownInstruction(ins);
             }
+            latency = 2;
             break;
         case 0b100110:          // BR,BRD,BRLD,BRA,BRAD,BRALD,BRK
         case 0b101110:          // BRI,BRID,BRLID,BRAI,BRAID,BRALID,BRKI
@@ -292,6 +302,7 @@ public:
             default:
                 unknownInstruction(ins);
             }
+            latency = delaySlot.isNull ? 3 : 2;
             break;
         case 0b101111:          // BEQI,BNEI,BLTI,BLEI,BGTI,BGEI,BEQID,BNEID,BLTID,BLEID,BGTID,BGEID
             {
@@ -300,6 +311,7 @@ public:
                     if (ins.Rd & 0b10000)
                         delaySlot = pc;
                     pc += op2 - 4;
+                    latency = delaySlot.isNull ? 3 : 2;
                 }
                 switch(ins.Rd & 0b1111)
                 {
@@ -341,6 +353,8 @@ public:
                 r[ins.Rd] = mem.readByte(addr);
                 if (memaccess)
                     memaccess(false, addr, 1);
+                version(AreaOptimizedMicroBlaze)
+                    latency = 2;
             }
             break;
         case 0b110001:          // LHU
@@ -357,6 +371,8 @@ public:
                     r[ins.Rd] = (b2 << 8) | b1;
                 if (memaccess)
                     memaccess(false, addr, 2);
+                version(AreaOptimizedMicroBlaze)
+                    latency = 2;
             }
             break;
         case 0b110010:          // LW
@@ -368,6 +384,8 @@ public:
                 r[ins.Rd] = mem.readWord(addr);
                 if (memaccess)
                     memaccess(false, addr, 4);
+                version(AreaOptimizedMicroBlaze)
+                    latency = 2;
             }
             break;
         case 0b110100:          // SB
@@ -379,6 +397,8 @@ public:
                 mem.writeByte(addr, cast(byte)r[ins.Rd]);
                 if (memaccess)
                     memaccess(true, addr, 1);
+                version(AreaOptimizedMicroBlaze)
+                    latency = 2;
             }
             break;
         case 0b110101:          // SH
@@ -398,6 +418,8 @@ public:
                 }
                 if (memaccess)
                     memaccess(true, addr, 2);
+                version(AreaOptimizedMicroBlaze)
+                    latency = 2;
             }
             break;
         case 0b110110:          // SW
@@ -409,6 +431,8 @@ public:
                 mem.writeWord(addr, r[ins.Rd]);
                 if (memaccess)
                     memaccess(true, addr, 4);
+                version(AreaOptimizedMicroBlaze)
+                    latency = 2;
             }
             break;
         case 0b100011:          // PCMPNE
@@ -491,6 +515,7 @@ public:
         default:
             unknownInstruction(ins);
         }
+        return latency;
     }
 
     // for debugger support
