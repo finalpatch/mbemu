@@ -469,7 +469,8 @@ public:
                 }
                 break;
             default:
-                unknownInstruction(ins);
+                // WDC, WIC are ignored because cache is not yet implemented
+                break;
             }
             break;
         case 0b100101:          // MTS,MFS,MSRCLR,MSRSET
@@ -485,7 +486,8 @@ public:
                     else if (op2 == 2050)
                         shr = op1;
                     else
-                        unknownInstruction(ins);
+                        // ignore unimplemented special registers
+                    {}
                     break;
                 case 2:             // MFS
                     if (op2 == 0)
