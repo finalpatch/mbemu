@@ -109,7 +109,8 @@ public:
 
     uint execute(const Instruction ins)
     {
-        r[0] = 0;               // make sure r0 is always zero
+        scope(exit)
+            r[0] = 0;           // make sure r0 is always zero
         
         bool typeB = (ins.Opcode & 0x8) != 0;
         uint op1 = r[ins.Ra];
