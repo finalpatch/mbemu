@@ -109,11 +109,11 @@ public:
 
     uint execute(const Instruction ins)
     {
+        r[0] = 0;               // make sure r0 is always zero
+        
         bool typeB = (ins.Opcode & 0x8) != 0;
         uint op1 = r[ins.Ra];
         uint op2 = typeB ? getImm(ins) : r[ins.Rb];
-
-        r[0] = 0;               // make sure r0 is always zero
 
         uint latency = 1;       // most instructions have latency of 1 cycle
 
