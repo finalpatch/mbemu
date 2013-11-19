@@ -46,26 +46,6 @@ struct Elf32_Ehdr {
     Elf32_Half       e_shentsize;  /* sizeof shdr */
     Elf32_Half       e_shnum;      /* number shdrs */
     Elf32_Half       e_shstrndx;   /* shdr string index */
-
-    void fixEndian()
-    {
-        version(BigEndianMicroBlaze)
-        {
-            swapEndianInplace(e_type);
-            swapEndianInplace(e_machine);
-            swapEndianInplace(e_version);
-            swapEndianInplace(e_entry);
-            swapEndianInplace(e_phoff);
-            swapEndianInplace(e_shoff);
-            swapEndianInplace(e_flags);
-            swapEndianInplace(e_ehsize);
-            swapEndianInplace(e_phentsize);
-            swapEndianInplace(e_phnum);
-            swapEndianInplace(e_shentsize);
-            swapEndianInplace(e_shnum);
-            swapEndianInplace(e_shstrndx);
-        }
-    }
 }
 
 private align(1)
@@ -80,28 +60,19 @@ struct Elf32_Shdr {
     Elf32_Word  sh_info;
     Elf32_Word  sh_addralign;
     Elf32_Word  sh_entsize;
-
-    void fixEndian()
-    {
-        version(BigEndianMicroBlaze)
-        {
-            swapEndianInplace(sh_name);
-            swapEndianInplace(sh_type);
-            swapEndianInplace(sh_flags);
-            swapEndianInplace(sh_addr);
-            swapEndianInplace(sh_offset);
-            swapEndianInplace(sh_size);
-            swapEndianInplace(sh_link);
-            swapEndianInplace(sh_info);
-            swapEndianInplace(sh_addralign);
-            swapEndianInplace(sh_entsize);
-        }
-    }
 }
 
-private void swapEndianInplace(T) (ref T v)
+void fixEndian(T)(ref T v)
 {
-    v = swapEndian(v);
+    version(BigEndianMicroBlaze)
+    {
+        foreach(member; __traits(allMembers, T)) {
+            // swap anything swappable
+            enum code = "v."~member~"=swapEndian(v."~member~")";
+            static if (__traits(compiles, mixin(code)))
+                mixin(code~";");
+        }
+    }
 }
 
 private T* getStruct(T, S, I)(S buf, I pos)
