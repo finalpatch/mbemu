@@ -2,15 +2,21 @@ module mbemu.mem;
 import std.bitmanip;
 import std.string;
 
-interface MemoryRange
+class MemoryRange
 {
-    uint base();
-    uint size();
+    immutable uint base;
+    immutable uint size;
+
+    this(uint _base, uint _size)
+    {
+        base = _base;
+        size = _size;
+    }
     
-    uint  readWord(uint addr);
-    void  writeWord(uint addr, uint data);
-    ubyte readByte(uint addr);
-    void  writeByte(uint addr, ubyte data);
+    uint  readWord(uint addr) { return 0; }
+    void  writeWord(uint addr, uint data) {}
+    ubyte readByte(uint addr) { return 0; }
+    void  writeByte(uint addr, ubyte data) {}
 }
 
 class MemorySpace
@@ -43,7 +49,7 @@ private:
     {
         foreach (m; mem)
         {
-            if (addr >= m.base() && addr < m.base() + m.size())
+            if (addr >= m.base && addr < m.base + m.size)
                 return m;
         }
         throw new Exception("invalid mem address %x".format(addr));
@@ -53,33 +59,31 @@ private:
 class SDRAM : MemoryRange
 {
 public:
-    this(uint base, uint size)
+    this(uint _base, uint _size)
     {
-        m_base = base;
+        super(_base, _size);
         m_words = new uint[size / 4];
     }
-    uint base() { return m_base; }
-    uint size() { return cast(uint)m_words.length * 4; }
-    uint readWord(uint addr)
+    override uint readWord(uint addr)
     {
         version(BigEndianMicroBlaze)
             return swapEndian(m_words[(addr - m_base)/4]);
         else
             return m_words[(addr - m_base)/4];
     }
-    void writeWord(uint addr, uint data)
+    override void writeWord(uint addr, uint data)
     {
         version(BigEndianMicroBlaze)
             m_words[(addr - m_base)/4] = swapEndian(data);
         else
             m_words[(addr - m_base)/4] = data;
     }
-    ubyte readByte(uint addr)
+    override ubyte readByte(uint addr)
     {
         ubyte* bytes = cast(ubyte*)m_words.ptr;
         return bytes[addr];
     }
-    void writeByte(uint addr, ubyte data)
+    override void writeByte(uint addr, ubyte data)
     {
         ubyte* bytes = cast(ubyte*)m_words.ptr;
         bytes[addr] = data;

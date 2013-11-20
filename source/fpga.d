@@ -6,18 +6,18 @@ import std.bitmanip;
 
 class Console : MemoryRange
 {
-    uint base() { return 0xfffffffc; }
-    uint size() { return 1; }
+    this()
+    {
+        super(0xfffffffc, 1);
+    }
     
-    uint readWord(uint addr) { return 0; }
-    void writeWord(uint addr, uint data) {}
-    ubyte readByte(uint addr)
+    override ubyte readByte(uint addr)
     {
         char c;
         std.stdio.readf("%s", &c);
         return cast(ubyte)c;
     }
-    final void writeByte(uint addr, ubyte data)
+    override void writeByte(uint addr, ubyte data)
     {
         std.stdio.writef("%s", cast(char)data);
     }
@@ -28,11 +28,9 @@ class FPGA : MemoryRange
 public:
     this(SDRAM sdram)
     {
+        super(0xffffff00, NumOfRegisters * 4);
         lcd = new LCD(sdram);
     }
-
-    uint base() { return 0xffffff00; }
-    uint size() { return NumOfRegisters * 4; }
 
     enum {
         TimerInterrupt,
@@ -49,14 +47,10 @@ public:
     }
     uint[NumOfRegisters] reg;
 
-    // byte access disabled
-    ubyte readByte(uint addr) {return 0;}
-    void writeByte(uint addr, ubyte data) {}
-
     // The FPGA uses native endian because byte access is not allowed
-    uint readWord(uint addr)
+    override uint readWord(uint addr)
     {
-        uint idx = (addr - base())/4;
+        uint idx = (addr - base)/4;
         switch(idx)
         {
         case LCDEnable:
@@ -67,9 +61,9 @@ public:
             return reg[idx];
         }
     }
-    void writeWord(uint addr, uint data)
+    override void writeWord(uint addr, uint data)
     {
-        uint idx = (addr - base())/4;
+        uint idx = (addr - base)/4;
         switch(idx)
         {
         case InterruptStatus:

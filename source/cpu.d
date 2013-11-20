@@ -75,7 +75,7 @@ public:
         uint latency;
         if (delaySlot.isNull)
         {
-            if (IE && !BIP && !EIP && immExt.isNull && interrupt && interrupt())
+            if (interrupt && interrupt() && immExt.isNull && IE && !BIP && !EIP)
             {
                 r[14] = pc;
                 IE = false;

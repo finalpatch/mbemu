@@ -75,7 +75,7 @@ private:
 			if (m_enabled)
 			{
 				ubyte[] buf = m_sdram.getBuffer();
-				ubyte* fb = buf[m_frameBuffer - m_sdram.base() .. $].ptr;
+				ubyte* fb = buf[m_frameBuffer - m_sdram.base .. $].ptr;
 				SDL_UpdateTexture(tex, cast(const(SDL_Rect)*)null, fb, width * 4);
 				SDL_RenderCopy(ren, tex, null, null);
 				SDL_RenderPresent(ren);
