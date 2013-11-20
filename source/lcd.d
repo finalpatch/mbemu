@@ -53,10 +53,12 @@ public:
 		}
 	}
 	
+	uint[256] lut;
+	
 private:
-	SDRAM       m_sdram;
-	bool        m_enabled;
-	uint        m_frameBuffer;
+	SDRAM     m_sdram;
+	bool      m_enabled;
+	uint      m_frameBuffer;
 
 	version(WithLCD)
 	{
@@ -74,9 +76,21 @@ private:
 		{
 			if (m_enabled)
 			{
-				ubyte[] buf = m_sdram.getBuffer();
-				ubyte* fb = buf[m_frameBuffer - m_sdram.base .. $].ptr;
-				SDL_UpdateTexture(tex, cast(const(SDL_Rect)*)null, fb, width * 4);
+				ubyte[] fb =  m_sdram.getBuffer()[m_frameBuffer - m_sdram.base .. m_frameBuffer - m_sdram.base + 256];
+				uint* pixels; int pitch;
+				if (SDL_LockTexture(tex, cast(const(SDL_Rect)*)null, cast(void**)&pixels, &pitch) == 0)
+				{
+					pitch /= 4;
+					for(uint row = 0; row < height; ++row)
+					{
+						for(uint col = 0; col < width; ++col)
+						{
+							pixels[col] = lut[fb[row * width + col]];
+						}
+						pixels += pitch;
+					}
+					SDL_UnlockTexture(tex);
+				}
 				SDL_RenderCopy(ren, tex, null, null);
 				SDL_RenderPresent(ren);
 			}

@@ -28,7 +28,7 @@ class FPGA : MemoryRange
 public:
     this(SDRAM sdram)
     {
-        super(0xffffff00, NumOfRegisters * 4);
+        super(0xffff0000, NumOfRegisters * 4);
         lcd = new LCD(sdram);
     }
 
@@ -42,7 +42,8 @@ public:
         TimerCounter,
         TimerSet,
         LCDEnable,
-        LCDFrameBuffer,
+        LCDLookupTable,
+        LCDFrameBuffer = LCDLookupTable + 0x100,
         NumOfRegisters,
     }
     uint[NumOfRegisters] reg;
@@ -55,6 +56,8 @@ public:
         {
         case LCDEnable:
             return lcd.enabled ? 1 : 0;
+        case LCDLookupTable: .. case LCDLookupTable + 0xff:
+            return lcd.lut[idx - LCDLookupTable];
         case LCDFrameBuffer:
             return lcd.frameBuffer;
         default:
@@ -74,6 +77,9 @@ public:
             break;
         case LCDEnable:
             lcd.enabled = (data != 0);
+            break;
+        case LCDLookupTable: .. case (LCDLookupTable + 0xff):
+            lcd.lut[idx - LCDLookupTable] = data;
             break;
         case LCDFrameBuffer:
             lcd.frameBuffer = data;

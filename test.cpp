@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 volatile char* io = (char*)0xfffffffc;
-volatile uint32_t* fpga = (uint32_t*)0xffffff00;
+volatile uint32_t* fpga = (uint32_t*)0xffff0000;
 
 enum {
 	InterruptControl,
@@ -10,7 +10,8 @@ enum {
 	TimerCounter,
 	TimerSet,
 	LCDEnable,
-	LCDFrameBuffer,
+	LCDLookupTable,
+	LCDFrameBuffer = LCDLookupTable + 0x100,
 	NumOfRegisters,
 };
 
@@ -20,7 +21,7 @@ enum {
 
 const static uint32_t w = 320;
 const static uint32_t h = 240;
-static uint32_t fb[2][w*h];
+static uint8_t fb[2][w*h];
 
 int main()
 {
@@ -31,6 +32,9 @@ int main()
 	// set timer
 	fpga[TimerSet] = fpga[TimerCounter] + 2000;
 
+	// fill lut [argb]
+	fpga[LCDLookupTable] = 0xffff00ff;
+	fpga[LCDLookupTable+1] = 0xff0000ff;
 	fpga[LCDEnable] = 1;
 	uint32_t idx = 0;
 	while (true)
@@ -39,7 +43,7 @@ int main()
 		{
 			for(int x = 0; x < w; ++x)
 			{
-				fb[idx][w * y + x] = idx ? 0xff000000 : 0x00ff0000;
+				fb[idx][w * y + x] = idx ? 0 : 1;
 			}
 		}
 		fpga[LCDFrameBuffer] = (uint32_t)fb[idx];
