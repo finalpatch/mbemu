@@ -8,5 +8,21 @@
 	"versions" : [
 		"BigEndianMicroBlaze",
 		"AreaOptimizedMicroBlaze",
+	],
+
+	"configurations" : [
+		{
+			"name" : "NoLCD",
+			"targetType": "executable",
+			"versions" : [ ],
+		},
+		{
+			"name" : "WithLCD",
+			"targetType": "executable",
+			"versions" : [ "WithLCD"],
+			"dependencies": {
+				"derelict-sdl2" : "~master",
+			},
+		},
 	]
 }

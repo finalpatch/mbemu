@@ -17,8 +17,9 @@ void main(string[] args)
         return;
     }
 
-    auto fpga = new FPGA();
-    auto mem = new MemorySpace(new Console(), fpga, new SDRAM(0, 65536*4));
+    auto sdram = new SDRAM(0, 1024*1024*2);
+    auto fpga = new FPGA(sdram);
+    auto mem = new MemorySpace(new Console(), fpga, sdram);
     auto cpu = new CPU(mem);
 
     cpu.interrupt = ()=>fpga.reg[FPGA.InterruptStatus]!=0;

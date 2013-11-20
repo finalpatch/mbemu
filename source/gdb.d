@@ -79,16 +79,20 @@ void handleGdbCommands(CPU cpu)
     }
     else if (cmd == "c")
     {
-        while (!breakpoints.canFind(cpu.pc))
+        try
         {
-            if (!cpu.tick())
+            while (!breakpoints.canFind(cpu.pc))
             {
-                serverTid.send("S03");
-                return;
+                if (!cpu.tick())
+                {
+                    serverTid.send("S03");
+                    return;
+                }
+                if (hitDataBreakpoint)
+                    break;
             }
-            if (hitDataBreakpoint)
-                break;
         }
+        catch(Exception) {}
         serverTid.send("S05");
     }
     else if (cmd.startsWith("m"))

@@ -1,5 +1,6 @@
 module mbemu.fpga;
 import mbemu.mem;
+import mbemu.lcd;
 import std.stdio;
 import std.bitmanip;
 
@@ -16,7 +17,7 @@ class Console : MemoryRange
         std.stdio.readf("%s", &c);
         return cast(ubyte)c;
     }
-    void writeByte(uint addr, ubyte data)
+    final void writeByte(uint addr, ubyte data)
     {
         std.stdio.writef("%s", cast(char)data);
     }
@@ -25,6 +26,11 @@ class Console : MemoryRange
 class FPGA : MemoryRange
 {
 public:
+    this(SDRAM sdram)
+    {
+        lcd = new LCD(sdram);
+    }
+
     uint base() { return 0xffffff00; }
     uint size() { return NumOfRegisters * 4; }
 
@@ -37,8 +43,8 @@ public:
         InterruptStatus,
         TimerCounter,
         TimerSet,
-        FrameBuffer0,
-        FrameBuffer1,
+        LCDEnable,
+        LCDFrameBuffer,
         NumOfRegisters,
     }
     uint[NumOfRegisters] reg;
@@ -51,7 +57,15 @@ public:
     uint readWord(uint addr)
     {
         uint idx = (addr - base())/4;
-        return reg[idx];
+        switch(idx)
+        {
+        case LCDEnable:
+            return lcd.enabled ? 1 : 0;
+        case LCDFrameBuffer:
+            return lcd.frameBuffer;
+        default:
+            return reg[idx];
+        }
     }
     void writeWord(uint addr, uint data)
     {
@@ -64,13 +78,19 @@ public:
         case TimerCounter:
             // Timer cannot be assigned
             break;
+        case LCDEnable:
+            lcd.enabled = (data != 0);
+            break;
+        case LCDFrameBuffer:
+            lcd.frameBuffer = data;
+            break;
         default:
             reg[idx] = data;
             break;
         }
     }
 
-    void advanceClock(uint cycles)
+    final void advanceClock(uint cycles)
     {
         while(cycles--)
         {
@@ -80,7 +100,12 @@ public:
                 reg[InterruptStatus] |= reg[InterruptControl] & (1 << TimerInterrupt);
             }
         }
+        if ((reg[TimerCounter] & 0xffff) == 0)
+            lcd.handleEvents();
     }
+
+private:
+    LCD lcd;
 }
 
 // Local Variables:

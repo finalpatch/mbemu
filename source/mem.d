@@ -20,26 +20,26 @@ public:
     {
         mem = ranges;
     }
-    uint readWord(uint addr)
+    final uint readWord(uint addr)
     {
         return findMemRange(addr).readWord(addr);
     }
-    void writeWord(uint addr, uint data)
+    final void writeWord(uint addr, uint data)
     {
         findMemRange(addr).writeWord(addr, data);
     }
-    ubyte readByte(uint addr)
+    final ubyte readByte(uint addr)
     {
         return findMemRange(addr).readByte(addr);
     }
-    void writeByte(uint addr, ubyte data)
+    final void writeByte(uint addr, ubyte data)
     {
         findMemRange(addr).writeByte(addr, data);
     }
 private:
     MemoryRange[] mem;
     
-    MemoryRange findMemRange(uint addr)
+    final MemoryRange findMemRange(uint addr)
     {
         foreach (m; mem)
         {
@@ -84,6 +84,7 @@ public:
         ubyte* bytes = cast(ubyte*)m_words.ptr;
         bytes[addr] = data;
     }
+    final ubyte[] getBuffer() { return cast(ubyte[])m_words; }
 private:
     uint   m_base;
     uint[] m_words;

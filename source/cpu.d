@@ -70,7 +70,7 @@ public:
         mem = m;
     }
 
-    bool tick()
+    final bool tick()
     {
         uint latency;
         if (delaySlot.isNull)
@@ -107,7 +107,7 @@ public:
         return true;
     }
 
-    uint execute(const Instruction ins)
+    final uint execute(const Instruction ins)
     {
         scope(exit)
             r[0] = 0;           // make sure r0 is always zero
@@ -522,8 +522,8 @@ public:
     }
 
     // for debugger support
-    ubyte readMemByte(uint addr) { return mem.readByte(addr); }
-    void  writeMemByte(uint addr, ubyte data) { mem.writeByte(addr, data); }
+    final ubyte readMemByte(uint addr) { return mem.readByte(addr); }
+    final void  writeMemByte(uint addr, ubyte data) { mem.writeByte(addr, data); }
 
 private:
     Nullable!uint immExt;
@@ -563,7 +563,7 @@ private:
 struct Tracer
 {
     char[] indent;
-    void opUnary(string op)() if( op =="++")
+    final void opUnary(string op)() if( op =="++")
     {
         version(TraceInstructions)
         {
@@ -571,17 +571,17 @@ struct Tracer
             indent[$-2..$] = ' ';
         }
     }
-    void opUnary(string op)() if( op =="--")
+    final void opUnary(string op)() if( op =="--")
     {
         version(TraceInstructions)
             indent = indent[0..$-2];
     }
-    void opCall(uint addr, Instruction ins)
+    final void opCall(uint addr, Instruction ins)
     {
         version(TraceInstructions)
             writefln("%s%x: %x", indent, addr, ins.insword);
     }
-    void halt()
+    final void halt()
     {
         version(TraceInstructions)
             writeln("halt");

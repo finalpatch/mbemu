@@ -9,14 +9,18 @@ enum {
 	InterruptStatus,
 	TimerCounter,
 	TimerSet,
-	FrameBuffer0,
-	FrameBuffer1,
+	LCDEnable,
+	LCDFrameBuffer,
 	NumOfRegisters,
 };
 
 enum {
 	TimerInterrupt,
 };
+
+const static uint32_t w = 320;
+const static uint32_t h = 240;
+static uint32_t fb[2][w*h];
 
 int main()
 {
@@ -25,10 +29,22 @@ int main()
 	// enable timer interrupt on fpga
 	fpga[InterruptControl] |= 1 << TimerInterrupt;
 	// set timer
-	fpga[TimerSet] = 2000;
-	int x;
-	scanf("%d", &x);
-	printf("%d\n", x);
+	fpga[TimerSet] = fpga[TimerCounter] + 2000;
+
+	fpga[LCDEnable] = 1;
+	uint32_t idx = 0;
+	while (true)
+	{
+		for(int y = 0; y < h; ++y)
+		{
+			for(int x = 0; x < w; ++x)
+			{
+				fb[idx][w * y + x] = idx ? 0xff000000 : 0x00ff0000;
+			}
+		}
+		fpga[LCDFrameBuffer] = (uint32_t)fb[idx];
+		idx = (idx + 1) % 2;
+	}
 	return 0;
 }
 
