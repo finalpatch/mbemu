@@ -91,15 +91,13 @@ private:
 		{
 			while(true)
 			{
-				synchronized (cond.mutex)
-					cond.wait();
+				cond.wait();
 				update_i();
 			}
 		}
 		final void update()
 		{
-			synchronized (cond.mutex)
-				cond.notify();
+			cond.notify();
 		}
 		final void update_i()
 		{
