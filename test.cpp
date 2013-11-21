@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
 
 volatile char* io = (char*)0xfffffffc;
 volatile uint32_t* fpga = (uint32_t*)0xffff0000;
@@ -23,6 +25,14 @@ const static uint32_t w = 320;
 const static uint32_t h = 240;
 static uint8_t fb[2][w*h];
 
+void fillRect(uint8_t* fb, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint8_t clr)
+{
+	for(int y = y1; y < y2; ++y)
+	{
+		memset(&fb[w * y + x1], x2 - x1, clr);
+	}
+}
+
 int main()
 {
 	// enable interrupt on cpu
@@ -32,22 +42,25 @@ int main()
 	// set timer
 	fpga[TimerSet] = fpga[TimerCounter] + 2000;
 
-	// fill lut [argb]
-	fpga[LCDLookupTable] = 0xffff00ff;
-	fpga[LCDLookupTable+1] = 0xff0000ff;
+	for(int i = 0; i < 250;)
+	{
+		fpga[LCDLookupTable + (i++)] = 0xff0000ff;
+		fpga[LCDLookupTable + (i++)] = 0xff00ff00;
+		fpga[LCDLookupTable + (i++)] = 0xffff0000;
+		fpga[LCDLookupTable + (i++)] = 0xff00ffff;
+		fpga[LCDLookupTable + (i++)] = 0xffffff00;
+		fpga[LCDLookupTable + (i++)] = 0xffff00ff;
+	}
 	fpga[LCDEnable] = 1;
-	uint32_t idx = 0;
+	
 	while (true)
 	{
-		for(int y = 0; y < h; ++y)
-		{
-			for(int x = 0; x < w; ++x)
-			{
-				fb[idx][w * y + x] = idx ? 0 : 1;
-			}
-		}
-		fpga[LCDFrameBuffer] = (uint32_t)fb[idx];
-		idx = (idx + 1) % 2;
+		uint x1 = rand() % w;
+		uint x2 = rand() % w;
+		uint y1 = rand() % h;
+		uint y2 = rand() % h;
+		fillRect(fb[0], x1, y1, x2, y2, rand() & 0xff);
+		fpga[LCDFrameBuffer] = (uint32_t)fb[0];
 	}
 	return 0;
 }
