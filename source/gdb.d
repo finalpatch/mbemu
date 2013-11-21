@@ -95,6 +95,11 @@ void handleGdbCommands(CPU cpu)
         catch(Exception) {}
         serverTid.send("S05");
     }
+    else if (cmd == "k")
+    {
+        import std.c.stdlib;
+        exit(0);
+    }
     else if (cmd.startsWith("m"))
     {
         auto re = regex(r"m([0-9a-f]+),([0-9a-f]+)");
