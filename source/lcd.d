@@ -58,9 +58,9 @@ public:
 	uint[256] lut;
 	
 private:
-	SDRAM     m_sdram;
-	bool      m_enabled;
-	uint      m_frameBuffer;
+	SDRAM m_sdram;
+	shared bool m_enabled;
+	shared uint m_frameBuffer;
 
 	version(WithLCD)
 	{
