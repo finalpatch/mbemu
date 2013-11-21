@@ -1,5 +1,6 @@
 import std.stdio;
 import std.getopt;
+import std.c.stdlib;
 import mbemu.cpu;
 import mbemu.mem;
 import mbemu.elf;
@@ -40,6 +41,7 @@ void main(string[] args)
         while(true)
             handleGdbCommands(cpu);
     }
+    exit(0);
 }
 
 // Local Variables:
