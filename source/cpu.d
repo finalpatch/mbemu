@@ -61,7 +61,7 @@ public:
     bool delegate() interrupt;
     // the cpu calls this after every instruction with the instruction
     // latency in number of cycles
-    void delegate(uint cycles) advclk;
+    bool delegate(uint cycles) advclk;
     // gets called after memory access
     void delegate(bool write, uint addr, uint size) memaccess;
 
@@ -102,7 +102,7 @@ public:
         }
 
         if (advclk)
-            advclk(latency);
+            return advclk(latency);
 
         return true;
     }

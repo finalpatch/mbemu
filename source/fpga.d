@@ -90,7 +90,7 @@ public:
         }
     }
 
-    final void advanceClock(uint cycles)
+    final bool advanceClock(uint cycles)
     {
         while(cycles--)
         {
@@ -100,8 +100,10 @@ public:
                 reg[InterruptStatus] |= reg[InterruptControl] & (1 << TimerInterrupt);
             }
         }
+        bool keepRunning = true;
         if ((reg[TimerCounter] & 0xffff) == 0)
-            lcd.handleEvents();
+            keepRunning = lcd.handleEvents();
+        return keepRunning;
     }
 
 private:

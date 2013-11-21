@@ -20,8 +20,10 @@ public:
 		super(&run);
 		m_sdram = sdram;
 		init();
-		version(WithLCD)
-			start();
+	}
+	~this()
+	{
+		fini();
 	}
 	final bool enabled() { return m_enabled; }
 	final void enabled(bool e)
@@ -35,7 +37,7 @@ public:
 		m_frameBuffer = fb;
 		update();
 	}
-	final void handleEvents()
+	final bool handleEvents()
 	{
 		version(WithLCD)
 		{
@@ -45,14 +47,16 @@ public:
 				switch (event.type)
 				{
 				case SDL_QUIT:
-					import std.c.stdlib;
-					exit(0);
-					break;
+					keepRunning = false;
+					cond.notify();
+					join();
+					return false;
 				default:
 					break;
 				}
 			}
 		}
+		return true;
 	}
 	
 	uint[256] lut;
@@ -70,6 +74,7 @@ private:
 		GLuint        tex;
 		uint[]        buf = new uint[width * height];
 		Condition     cond;
+		shared bool   keepRunning = true;
 
 		final void init()
 		{
@@ -86,10 +91,17 @@ private:
 			glBindTexture(GL_TEXTURE_RECTANGLE, tex);
 			SDL_GL_MakeCurrent(win, null);
 			cond = new Condition(new Mutex());
+			start();		// start the rendering thread (void run())
+		}
+		final void fini()
+		{
+			SDL_GL_DeleteContext(glrc);
+			SDL_DestroyWindow(win);
+			SDL_Quit();
 		}
 		final void run()
 		{
-			while(true)
+			while(keepRunning)
 			{
 				synchronized (cond.mutex)
 					cond.wait();
@@ -132,6 +144,7 @@ private:
 	else
 	{
 		final void init() {}
+		final void fini() {}
 		final void update() {}
 		final void run() {}
 	}
