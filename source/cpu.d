@@ -184,6 +184,18 @@ public:
             version(AreaOptimizedMicroBlaze)
                 latency = 3;
             break;
+        case 0b010010:          // IDIV, IDIVU
+            if (op1 == 0)
+                r[ins.Rd] = 0;          // TODO: set exception
+            else if (ins.filler1 & 0x2) // unsigned
+                r[ins.Rd] = op2 / op1;
+            else
+                r[ins.Rd] = cast(int)op2 / cast(int)op1;
+            version(AreaOptimizedMicroBlaze)
+                latency = 34;
+            else
+                latency = 32;
+            break;
         case 0b010001:          // BSRL,BSRA,BSLL
         case 0b011001:          // BSRLI,BSRAI,BSLLI
             {
