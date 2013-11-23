@@ -44,7 +44,7 @@ public:
     }
 private:
     MemoryRange[] mem;
-    
+
     final MemoryRange findMemRange(uint addr)
     {
         foreach (m; mem)
@@ -67,16 +67,16 @@ public:
     override uint readWord(uint addr)
     {
         version(BigEndianMicroBlaze)
-            return swapEndian(m_words[(addr - m_base)/4]);
+            return swapEndian(m_words[(addr - base)/4]);
         else
-            return m_words[(addr - m_base)/4];
+            return m_words[(addr - base)/4];
     }
     override void writeWord(uint addr, uint data)
     {
         version(BigEndianMicroBlaze)
-            m_words[(addr - m_base)/4] = swapEndian(data);
+            m_words[(addr - base)/4] = swapEndian(data);
         else
-            m_words[(addr - m_base)/4] = data;
+            m_words[(addr - base)/4] = data;
     }
     override ubyte readByte(uint addr)
     {
@@ -88,9 +88,8 @@ public:
         ubyte* bytes = cast(ubyte*)m_words.ptr;
         bytes[addr] = data;
     }
-    final ubyte[] getBuffer() { return cast(ubyte[])m_words; }
+    T[] getBuffer(T)() { return cast(T[])m_words; }
 private:
-    uint   m_base;
     uint[] m_words;
 }
 

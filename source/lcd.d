@@ -72,12 +72,13 @@ private:
 		SDL_Window*   win;
 		SDL_GLContext glrc;
 		GLuint        tex;
-		uint[]        buf = new uint[width * height];
+		uint[]        buf;
 		Condition     cond;
 		shared bool   keepRunning = true;
 
 		final void init()
 		{
+            buf = new uint[width * height];
 			DerelictSDL2.load();
 			DerelictGL.load();
 			SDL_Init(SDL_INIT_VIDEO);
@@ -118,7 +119,7 @@ private:
 			SDL_GL_MakeCurrent(win, glrc);
 			if (m_enabled)
 			{
-				ubyte[] fb =  m_sdram.getBuffer()[m_frameBuffer - m_sdram.base .. m_frameBuffer - m_sdram.base + 256];
+				ubyte[] fb =  m_sdram.getBuffer!ubyte()[m_frameBuffer - m_sdram.base .. m_frameBuffer - m_sdram.base + 256];
 				uint* pixels; int pitch;
 				for(uint row = 0; row < height; ++row)
 				{

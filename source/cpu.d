@@ -128,12 +128,10 @@ public:
         case 0b001010:          // ADDIC
         case 0b001100:          // ADDIK
         case 0b001110:          // ADDIKC
-            ulong sum = cast(ulong)op1 + cast(ulong)op2;
-            r[ins.Rd] = cast(uint)sum;
-            if (ins.Opcode & 0b010 && C) // C
-                r[ins.Rd] += 1;
+            ulong sum = cast(ulong)op1 + cast(ulong)op2 + ((ins.Opcode & 0b010) && C);
             if ((ins.Opcode & 0b100) == 0) // K
                 C = (sum > 0xffffffff);
+            r[ins.Rd] = cast(uint)sum;
             break;
         case 0b000001:          // RSUB
         case 0b000011:          // RSUBC
@@ -142,16 +140,13 @@ public:
         case 0b001011:          // RSUBIC
         case 0b001101:          // RSUBIK
         case 0b001111:          // RSUBIKC
-            if (ins.Opcode & 0b010) // C
-                r[ins.Rd] = op2 + ~op1 + (C ? 1 : 0);
-            else
-                r[ins.Rd] = op2 + ~op1 + 1;
+            r[ins.Rd] = op2 - op1 + ((ins.Opcode & 0b010) && C);
             if ((ins.Opcode & 0b100) == 0) // K
                 C = cast(int)op2 < cast(int)op1;
             break;
         case 0b000101:          // CMP,CMPU,RSUBK
             {
-                r[ins.Rd] = op2 + ~op1 + 1; // RSUBK
+                r[ins.Rd] = op2 - op1; // RSUBK
                 if (ins.filler1 != 0)
                 {
                     if ((ins.filler1 == 1) ?
@@ -222,14 +217,14 @@ public:
             }
             else                // PCMPBF
             {
-                byte getByte(uint w, int n) { return 0xff & (w >> ((3 - n) * 8)); }
-                if (getByte(op2, 0) == getByte(op1, 0))
+                byte getByte(int n)(uint w) { return 0xff & (w >> ((3 - n) * 8)); }
+                if (getByte!0(op2) == getByte!0(op1))
                     r[ins.Rd] = 1;
-                else if (getByte(op2, 1) == getByte(op1, 1))
+                else if (getByte!1(op2) == getByte!1(op1))
                     r[ins.Rd] = 2;
-                else if (getByte(op2, 2) == getByte(op1, 2))
+                else if (getByte!2(op2) == getByte!2(op1))
                     r[ins.Rd] = 3;
-                else if (getByte(op2, 3) == getByte(op1, 3))
+                else if (getByte!3(op2) == getByte!3(op1))
                     r[ins.Rd] = 4;
                 else
                     r[ins.Rd] = 0;
@@ -531,7 +526,7 @@ private:
     MemorySpace mem;
     Tracer trace;
 
-    final int getImm(Instruction ins)
+    int getImm()(Instruction ins)
     {
         if (immExt.isNull)
         {
