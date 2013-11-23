@@ -24,8 +24,7 @@ void main(string[] args)
 
     cpu.interrupt = ()=>fpga.reg[FPGA.InterruptStatus]!=0;
     cpu.advclk = &fpga.advanceClock;
-    
-    cpu.pc = loadElf(args[1], mem);
+    cpu.reset(loadElf(args[1], mem));
 
     if (!dbg)
     {

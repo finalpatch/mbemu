@@ -42,9 +42,6 @@ public:
     {
         findMemRange(addr).writeByte(addr, data);
     }
-private:
-    MemoryRange[] mem;
-
     final MemoryRange findMemRange(uint addr)
     {
         foreach (m; mem)
@@ -54,6 +51,8 @@ private:
         }
         throw new Exception("invalid mem address %x".format(addr));
     }
+private:
+    MemoryRange[] mem;
 }
 
 class SDRAM : MemoryRange

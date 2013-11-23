@@ -83,7 +83,7 @@ public:
                 ++trace;
             }
 
-            auto ins = cast(Instruction)mem.readWord(pc);
+            auto ins = loadInstruction(pc);
             trace(pc, ins);
             if (ins.insword == 0xb8000000) // bri 0
             {
@@ -95,7 +95,7 @@ public:
         }
         else
         {
-            auto ins = cast(Instruction)mem.readWord(delaySlot);
+            auto ins = loadInstruction(delaySlot);
             trace(delaySlot, ins);
             latency = execute(ins);
             delaySlot.nullify();
@@ -358,7 +358,7 @@ public:
                 uint addr = op1 + op2;
                 if (ins.Ra == 1)
                     checkStack(addr);
-                r[ins.Rd] = mem.readByte(addr);
+                r[ins.Rd] = loadByte(addr);
                 if (memaccess)
                     memaccess(false, addr, 1);
                 version(AreaOptimizedMicroBlaze)
@@ -371,8 +371,8 @@ public:
                 uint addr = op1 + op2;
                 if (ins.Ra == 1)
                     checkStack(addr);
-                auto b1 = mem.readByte(addr);
-                auto b2 = mem.readByte(addr+1);
+                auto b1 = loadByte(addr);
+                auto b2 = loadByte(addr+1);
                 version (BigEndianMicroBlaze)
                     r[ins.Rd] = (b1 << 8) | b2;
                 else // Little endian
@@ -389,7 +389,7 @@ public:
                 uint addr = op1 + op2;
                 if (ins.Ra == 1)
                     checkStack(addr);
-                r[ins.Rd] = mem.readWord(addr);
+                r[ins.Rd] = loadWord(addr);
                 if (memaccess)
                     memaccess(false, addr, 4);
                 version(AreaOptimizedMicroBlaze)
@@ -402,7 +402,7 @@ public:
                 uint addr = op1 + op2;
                 if (ins.Ra == 1)
                     checkStack(addr);
-                mem.writeByte(addr, cast(byte)r[ins.Rd]);
+                storeByte(addr, cast(byte)r[ins.Rd]);
                 if (memaccess)
                     memaccess(true, addr, 1);
                 version(AreaOptimizedMicroBlaze)
@@ -416,13 +416,13 @@ public:
                 ushort word = r[ins.Rd] & 0xffff;
                 version (BigEndianMicroBlaze)
                 {
-                    mem.writeByte(addr, word >> 8);
-                    mem.writeByte(addr+1, word & 0xff);
+                    storeByte(addr, word >> 8);
+                    storeByte(addr+1, word & 0xff);
                 }
                 else // Little endian
                 {
-                    mem.writeByte(addr, word & 0xff);
-                    mem.writeByte(addr+1, word >> 8);
+                    storeByte(addr, word & 0xff);
+                    storeByte(addr+1, word >> 8);
                 }
                 if (memaccess)
                     memaccess(true, addr, 2);
@@ -436,7 +436,7 @@ public:
                 uint addr = op1 + op2;
                 if (ins.Ra == 1)
                     checkStack(addr);
-                mem.writeWord(addr, r[ins.Rd]);
+                storeWord(addr, r[ins.Rd]);
                 if (memaccess)
                     memaccess(true, addr, 4);
                 version(AreaOptimizedMicroBlaze)
@@ -532,11 +532,66 @@ public:
     final ubyte readMemByte(uint addr) { return mem.readByte(addr); }
     final void  writeMemByte(uint addr, ubyte data) { mem.writeByte(addr, data); }
 
+    // optimize instruction loading (~25% speed up)
+    uint[] progMem;
+    uint progMemStart;
+    uint progMemEnd;
+    void reset(uint addr)
+    {
+        pc = addr;
+        fill(r[], 0);
+        slr = 0;
+        shr = ~0;
+        msr = 0;
+        immExt.nullify;
+        delaySlot.nullify;
+        auto sdram = cast(SDRAM)(mem.findMemRange(pc));
+        if(sdram)
+        {
+            progMem = sdram.getBuffer!uint();
+            progMemStart = sdram.base;
+            progMemEnd = sdram.base + sdram.size;
+        }
+    }
+
 private:
     Nullable!uint immExt;
     Nullable!uint delaySlot;
     MemorySpace mem;
     Tracer trace;
+
+    Instruction loadInstruction()(uint addr)
+    {
+        return cast(Instruction)loadWord(addr);
+    }
+    uint loadWord()(uint addr)
+    {
+        if (addr >= progMemStart && addr < progMemEnd)
+            return progMem[(addr - progMemStart)>>2];
+        else
+            return mem.readWord(addr);
+    }
+    void storeWord()(uint addr, uint data)
+    {
+        if (addr >= progMemStart && addr < progMemEnd)
+            progMem[(addr - progMemStart)>>2] = data;
+        else
+            mem.writeWord(addr, data);
+    }
+    ubyte loadByte()(uint addr)
+    {
+        if (addr >= progMemStart && addr < progMemEnd)
+            return (cast(ubyte[])progMem)[addr - progMemStart];
+        else
+            return mem.readByte(addr);
+    }
+    void storeByte()(uint addr, ubyte data)
+    {
+        if (addr >= progMemStart && addr < progMemEnd)
+            (cast(ubyte[])progMem)[addr - progMemStart] = data;
+        else
+            mem.writeByte(addr, data);
+    }
 
     int getImm()(Instruction ins)
     {
