@@ -15,10 +15,11 @@ version(WithLCD)
 class LCD : Thread
 {
 public:
-	this(SDRAM sdram)
+	this(SDRAM sdram, FPGA fpga)
 	{
 		super(&run);
 		m_sdram = sdram;
+        m_fpga = fpga;
 		init();
 	}
 	~this()
@@ -46,6 +47,33 @@ public:
 			{
 				switch (event.type)
 				{
+                case SDL_KEYUP:
+                case SDL_KEYDOWN:
+                    {
+                        int k = -1;
+                        switch(event.key.keysym.sym)
+                        {
+                        case SDLK_UP:     k = 0; break;
+                        case SDLK_DOWN:   k = 1; break;
+                        case SDLK_LEFT:   k = 2; break;
+                        case SDLK_RIGHT:  k = 3; break;
+                        case SDLK_ESCAPE: k = 4; break;
+                        case SDLK_LCTRL:  k = 5; break;
+                        case SDLK_LSHIFT: k = 6; break;
+                        case SDLK_LALT:   k = 7; break;
+                        case SDLK_RETURN: k = 8; break;
+                        default: break;
+                        }
+                        if (k >= 0)
+                        {
+                            if (event.type == SDL_KEYDOWN)
+                                m_fpga.reg[FPGA.ButtonStatus] |= (1 << k);
+                            else
+                                m_fpga.reg[FPGA.ButtonStatus] &= ~(1 << k);
+                            m_fpga.reg[FPGA.InterruptStatus] |= m_fpga.reg[FPGA.InterruptControl] & (1 << FPGA.ButtonInterrupt);
+                        }
+                    }
+                    break;
 				case SDL_QUIT:
 					keepRunning = false;
 					cond.notify();
@@ -63,6 +91,7 @@ public:
 	
 private:
 	SDRAM m_sdram;
+    FPGA m_fpga;
 	shared bool m_enabled;
 	shared uint m_frameBuffer;
 
@@ -82,7 +111,7 @@ private:
 			DerelictSDL2.load();
 			DerelictGL.load();
 			SDL_Init(SDL_INIT_VIDEO);
-			win = SDL_CreateWindow("mbemu", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
+			win = SDL_CreateWindow("mbemu", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width*2, height*2, SDL_WINDOW_OPENGL);
 			glrc = SDL_GL_CreateContext(win);
 			DerelictGL.reload();
 			SDL_GL_SetSwapInterval(0);

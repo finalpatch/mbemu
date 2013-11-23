@@ -29,11 +29,12 @@ public:
     this(SDRAM sdram)
     {
         super(0xffff0000, NumOfRegisters * 4);
-        lcd = new LCD(sdram);
+        lcd = new LCD(sdram, this);
     }
 
     enum {
         TimerInterrupt,
+        ButtonInterrupt,
     }
 
     enum {
@@ -44,6 +45,7 @@ public:
         LCDEnable,
         LCDLookupTable,
         LCDFrameBuffer = LCDLookupTable + 0x100,
+        ButtonStatus,
         NumOfRegisters,
     }
     uint[NumOfRegisters] reg;
