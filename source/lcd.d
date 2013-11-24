@@ -1,30 +1,17 @@
 module mbemu.lcd;
 import mbemu.mem;
-import mbemu.fpga;
 import std.bitmanip;
 import core.thread;
 import core.sync.mutex;
 import core.sync.condition;
 
-version(WithLCD)
-{
-	import derelict.sdl2.sdl;
-	import derelict.opengl3.gl;
-}
-
 class LCD : Thread
 {
 public:
-	this(SDRAM sdram, FPGA fpga)
+	this(SDRAM sdram)
 	{
 		super(&run);
 		m_sdram = sdram;
-        m_fpga = fpga;
-		init();
-	}
-	~this()
-	{
-		fini();
 	}
 	final bool enabled() { return m_enabled; }
 	final void enabled(bool e)
@@ -38,74 +25,15 @@ public:
 		m_frameBuffer = fb;
 		update();
 	}
-	final bool handleEvents()
-	{
-		version(WithLCD)
-		{
-			SDL_Event event;
-			if (SDL_PollEvent(&event))
-			{
-				switch (event.type)
-				{
-                case SDL_KEYUP:
-                case SDL_KEYDOWN:
-                    {
-                        int k = -1;
-                        switch(event.key.keysym.sym)
-                        {
-                        case SDLK_UP:     k = 0; break;
-                        case SDLK_DOWN:   k = 1; break;
-                        case SDLK_LEFT:   k = 2; break;
-                        case SDLK_RIGHT:  k = 3; break;
-                        case SDLK_ESCAPE: k = 4; break;
-                        case SDLK_LCTRL:  k = 5; break;
-                        case SDLK_LSHIFT: k = 6; break;
-                        case SDLK_LALT:   k = 7; break;
-                        case SDLK_RETURN: k = 8; break;
-                        default: break;
-                        }
-                        if (k >= 0)
-                        {
-                            if (event.type == SDL_KEYDOWN)
-                                m_fpga.reg[FPGA.ButtonStatus] |= (1 << k);
-                            else
-                                m_fpga.reg[FPGA.ButtonStatus] &= ~(1 << k);
-                            m_fpga.reg[FPGA.InterruptStatus] |= m_fpga.reg[FPGA.InterruptControl] & (1 << FPGA.ButtonInterrupt);
-                        }
-                    }
-                    break;
-				case SDL_QUIT:
-					keepRunning = false;
-					cond.notify();
-					join();
-					return false;
-				default:
-					break;
-				}
-			}
-		}
-		return true;
-	}
-	
+
 	uint[256] lut;
-	
-private:
-	SDRAM m_sdram;
-    FPGA m_fpga;
-	shared bool m_enabled;
-	shared uint m_frameBuffer;
 
 	version(WithLCD)
 	{
-		static immutable width = 320, height = 240;
-		SDL_Window*   win;
-		SDL_GLContext glrc;
-		GLuint        tex;
-		uint[]        buf;
-		Condition     cond;
-		shared bool   keepRunning = true;
-
-		final void init()
+        import derelict.sdl2.sdl;
+        import derelict.opengl3.gl;
+        
+		void init()
 		{
             buf = new uint[width * height];
 			DerelictSDL2.load();
@@ -123,12 +51,37 @@ private:
 			cond = new Condition(new Mutex());
 			start();		// start the rendering thread (void run())
 		}
-		final void fini()
+		void fini()
 		{
+            keepRunning = false;
+            cond.notify();
+            join();
 			SDL_GL_DeleteContext(glrc);
 			SDL_DestroyWindow(win);
 			SDL_Quit();
 		}
+    }
+    else
+    {
+		void init() {}
+		void fini() {}
+    }
+
+private:
+	SDRAM m_sdram;
+	shared bool m_enabled;
+	shared uint m_frameBuffer;
+
+	version(WithLCD)
+	{
+		static immutable width = 320, height = 240;
+		SDL_Window*   win;
+		SDL_GLContext glrc;
+		GLuint        tex;
+		uint[]        buf;
+		Condition     cond;
+		shared bool   keepRunning = true;
+
 		final void run()
 		{
 			while(keepRunning)
@@ -173,8 +126,6 @@ private:
 	}
 	else
 	{
-		final void init() {}
-		final void fini() {}
 		final void update() {}
 		final void run() {}
 	}

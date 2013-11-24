@@ -1,6 +1,7 @@
 module mbemu.fpga;
 import mbemu.mem;
 import mbemu.lcd;
+import mbemu.input;
 import std.stdio;
 import std.bitmanip;
 
@@ -29,7 +30,8 @@ public:
     this(SDRAM sdram)
     {
         super(0xffff0000, NumOfRegisters * 4);
-        lcd = new LCD(sdram, this);
+        lcd = new LCD(sdram);
+        lcd.init();
     }
 
     enum {
@@ -103,8 +105,10 @@ public:
             }
         }
         bool keepRunning = true;
-        if ((reg[TimerCounter] & 0xffff) == 0)
-            keepRunning = lcd.handleEvents();
+        if ((reg[TimerCounter] & 0xfff) == 0)
+            keepRunning = handleEvents(this);
+        if (!keepRunning)
+            lcd.fini();
         return keepRunning;
     }
 
