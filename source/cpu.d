@@ -567,14 +567,24 @@ private:
     uint loadWord()(uint addr)
     {
         if (addr >= progMemStart && addr < progMemEnd)
-            return progMem[(addr - progMemStart)>>2];
+        {
+            version(BigEndianMicroBlaze)
+                return swapEndian(progMem[(addr - progMemStart)>>2]);
+            else
+                return progMem[(addr - progMemStart)>>2];
+        }
         else
             return mem.readWord(addr);
     }
     void storeWord()(uint addr, uint data)
     {
         if (addr >= progMemStart && addr < progMemEnd)
-            progMem[(addr - progMemStart)>>2] = data;
+        {
+            version(BigEndianMicroBlaze)
+                progMem[(addr - progMemStart)>>2] = swapEndian(data);
+            else
+                progMem[(addr - progMemStart)>>2] = data;
+        }
         else
             mem.writeWord(addr, data);
     }

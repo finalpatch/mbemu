@@ -10,12 +10,16 @@
 		{
 			"name" : "default",
 			"targetType": "executable",
-			"versions" : [ "BigEndianMicroBlaze", "AreaOptimizedMicroBlaze" ],
+			"versions" : [ "BigEndianMicroBlaze", "AreaOptimizedMicroBlaze", "WithLCD" ],
+			"dependencies": {
+				"derelict-sdl2" : "~master",
+				"derelict-gl3" : "~master",
+			},
 		},
 		{
-			"name" : "default-le",
+			"name" : "nolcd",
 			"targetType": "executable",
-			"versions" : [ "AreaOptimizedMicroBlaze" ],
+			"versions" : [ "BigEndianMicroBlaze", "AreaOptimizedMicroBlaze" ],
 		},
 		{
 			"name" : "doom",
