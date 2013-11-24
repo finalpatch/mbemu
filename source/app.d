@@ -17,7 +17,7 @@ void main(string[] args)
         return;
     }
 
-    auto sdram = new SDRAM(0, 1024*1024*2);
+    auto sdram = new SDRAM(0, 1024*1024*16);
     auto fpga = new FPGA(sdram);
     auto mem = new MemorySpace(new Console(), fpga, sdram);
     auto cpu = new CPU(mem);

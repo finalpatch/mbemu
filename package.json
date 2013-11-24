@@ -5,21 +5,22 @@
 	"authors": ["Feng Li"],
 	"dependencies": {
 	},
-	"versions" : [
-		"BigEndianMicroBlaze",
-		"AreaOptimizedMicroBlaze",
-	],
 
 	"configurations" : [
 		{
-			"name" : "NoLCD",
+			"name" : "default",
 			"targetType": "executable",
-			"versions" : [ ],
+			"versions" : [ "BigEndianMicroBlaze", "AreaOptimizedMicroBlaze" ],
 		},
 		{
-			"name" : "WithLCD",
+			"name" : "default-le",
 			"targetType": "executable",
-			"versions" : [ "WithLCD"],
+			"versions" : [ "AreaOptimizedMicroBlaze" ],
+		},
+		{
+			"name" : "doom",
+			"targetType": "executable",
+			"versions" : [ "WithLCD" ],
 			"dependencies": {
 				"derelict-sdl2" : "~master",
 				"derelict-gl3" : "~master",
