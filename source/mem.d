@@ -1,4 +1,6 @@
 module mbemu.mem;
+import std.array;
+import std.algorithm;
 import std.bitmanip;
 import std.string;
 
@@ -44,12 +46,9 @@ public:
     }
     final MemoryRange findMemRange(uint addr)
     {
-        foreach (m; mem)
-        {
-            if (addr >= m.base && addr < m.base + m.size)
-                return m;
-        }
-        throw new Exception("invalid mem address %x".format(addr));
+        auto r = mem.find!(m=>(addr >= m.base && addr < m.base + m.size));
+        if (r.empty) throw new Exception("invalid mem address %x".format(addr));
+        return r[0];
     }
 private:
     MemoryRange[] mem;
@@ -61,21 +60,21 @@ public:
     this(uint _base, uint _size)
     {
         super(_base, _size);
-        m_words = new uint[size / 4];
+        m_words = new uint[size >> 2];
     }
     override uint readWord(uint addr)
     {
         version(BigEndianMicroBlaze)
-            return swapEndian(m_words[(addr - base)/4]);
+            return swapEndian(m_words[(addr - base)>>2]);
         else
-            return m_words[(addr - base)/4];
+            return m_words[(addr - base)>>2];
     }
     override void writeWord(uint addr, uint data)
     {
         version(BigEndianMicroBlaze)
-            m_words[(addr - base)/4] = swapEndian(data);
+            m_words[(addr - base)>>2] = swapEndian(data);
         else
-            m_words[(addr - base)/4] = data;
+            m_words[(addr - base)>>2] = data;
     }
     override ubyte readByte(uint addr)
     {
