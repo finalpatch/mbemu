@@ -10,7 +10,7 @@
 		{
 			"name" : "default",
 			"targetType": "executable",
-			"versions" : [ "BigEndianMicroBlaze", "AreaOptimizedMicroBlaze", "WithLCD" ],
+			"versions" : [ "BigEndianMicroBlaze", "AreaOptimizedMicroBlaze", "WithLCD", "SixteenBitLCD" ],
 			"dependencies": {
 				"derelict-sdl2" : "~master",
 				"derelict-gl3" : "~master",

@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#define SixteenBitLCD
+
 volatile char* io = (char*)0xfffffffc;
 volatile uint32_t* fpga = (uint32_t*)0xffff0000;
 
@@ -29,7 +31,11 @@ void fillRect(uint8_t* fb, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, u
 {
 	for(int y = y1; y < y2; ++y)
 	{
+#ifndef SixteenBitLCD
 		memset(&fb[w * y + x1], x2 - x1, clr);
+#else
+		memset(&fb[(w  * y + x1)*2], (x2 - x1) * 2, clr);
+#endif
 	}
 }
 
@@ -42,6 +48,7 @@ int main()
 	// set timer
 	fpga[TimerSet] = fpga[TimerCounter] + 2000;
 
+#ifndef SixteenBitLCD
 	for(int i = 0; i < 250;)
 	{
 		fpga[LCDLookupTable + (i++)] = 0xff0000ff;
@@ -51,6 +58,7 @@ int main()
 		fpga[LCDLookupTable + (i++)] = 0xffffff00;
 		fpga[LCDLookupTable + (i++)] = 0xffff00ff;
 	}
+#endif
 	fpga[LCDEnable] = 1;
 	
 	while (true)

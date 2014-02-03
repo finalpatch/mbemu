@@ -101,14 +101,24 @@ private:
 			SDL_GL_MakeCurrent(win, glrc);
 			if (m_enabled)
 			{
-				ubyte[] fb =  m_sdram.getBuffer!ubyte()[m_frameBuffer - m_sdram.base .. m_frameBuffer - m_sdram.base + width * height];
-				uint* pixels; int pitch;
-				for(uint row = 0; row < height; ++row)
-				{
-					for(uint col = 0; col < width; ++col)
-						buf[row * width + col] = lut[fb[row * width + col]];
+				version(SixteenBitLCD)
+ 				{
+					auto base = (m_frameBuffer - m_sdram.base) / ushort.sizeof;
+					ushort[] fb = m_sdram.getBuffer!ushort()[base .. base + width * height];
+					glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, fb.ptr);
 				}
-				glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, buf.ptr);
+				else
+				{
+					auto base = m_frameBuffer - m_sdram.base;
+					ubyte[] fb =  m_sdram.getBuffer!ubyte()[base .. base + width * height];
+					uint* pixels; int pitch;
+					for(uint row = 0; row < height; ++row)
+					{
+						for(uint col = 0; col < width; ++col)
+							buf[row * width + col] = lut[fb[row * width + col]];
+					}
+					glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA, width, height, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, buf.ptr);
+				}
                 glBegin(GL_QUADS);
                     glTexCoord2i(0, 0);           glVertex2f(-1.0f,  1.0f);
                     glTexCoord2i(0, height);      glVertex2f(-1.0f, -1.0f);
