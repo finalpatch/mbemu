@@ -101,7 +101,7 @@ private:
 			SDL_GL_MakeCurrent(win, glrc);
 			if (m_enabled)
 			{
-				ubyte[] fb =  m_sdram.getBuffer!ubyte()[m_frameBuffer - m_sdram.base .. m_frameBuffer - m_sdram.base + 256];
+				ubyte[] fb =  m_sdram.getBuffer!ubyte()[m_frameBuffer - m_sdram.base .. m_frameBuffer - m_sdram.base + width * height];
 				uint* pixels; int pitch;
 				for(uint row = 0; row < height; ++row)
 				{
