@@ -77,6 +77,7 @@ public:
         {
             if (interrupt && interrupt() && immExt.isNull && IE && !BIP && !EIP)
             {
+                reservation = false; // clear reservation on interrupt
                 r[14] = pc;
                 IE = false;
                 pc = 0x10;
@@ -229,7 +230,7 @@ public:
             }
             else                // PCMPBF
             {
-                byte getByte(int n)(uint w) { return 0xff & (w >> ((3 - n) * 8)); }
+                byte getByte(int n)(uint w) { return cast(byte)(0xff & (w >> ((3 - n) * 8))); }
                 if (getByte!0(op2) == getByte!0(op1))
                     r[ins.Rd] = 1;
                 else if (getByte!1(op2) == getByte!1(op1))
@@ -389,6 +390,11 @@ public:
                 uint addr = op1 + op2;
                 if (ins.Ra == 1)
                     checkStack(addr);
+                if (ins.Imm == 0b10000000000) // LWX
+                {
+                    reservation = true;
+                    C = false;  // clear the carry bit
+                }
                 r[ins.Rd] = loadWord(addr);
                 if (memaccess)
                     memaccess(false, addr, 4);
@@ -436,6 +442,19 @@ public:
                 uint addr = op1 + op2;
                 if (ins.Ra == 1)
                     checkStack(addr);
+                if (ins.Imm == 0b10000000000) // SWX
+                {
+                    if (reservation)
+                    {
+                        C = false;
+                    }
+                    else        // store does not happen
+                    {
+                        C = true; // set the carry bit
+                        break;
+                    }
+                    reservation = 0;
+                }
                 storeWord(addr, r[ins.Rd]);
                 if (memaccess)
                     memaccess(true, addr, 4);
@@ -557,6 +576,7 @@ public:
 private:
     Nullable!uint immExt;
     Nullable!uint delaySlot;
+    bool reservation;
     MemorySpace mem;
     Tracer trace;
 
