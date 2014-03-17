@@ -360,8 +360,7 @@ public:
                 if (ins.Ra == 1)
                     checkStack(addr);
                 r[ins.Rd] = loadByte(addr);
-                if (memaccess)
-                    memaccess(false, addr, 1);
+                onMemAcces(false, addr, 1);
                 version(AreaOptimizedMicroBlaze)
                     latency = 2;
             }
@@ -378,8 +377,7 @@ public:
                     r[ins.Rd] = (b1 << 8) | b2;
                 else // Little endian
                     r[ins.Rd] = (b2 << 8) | b1;
-                if (memaccess)
-                    memaccess(false, addr, 2);
+                onMemAcces(false, addr, 2);
                 version(AreaOptimizedMicroBlaze)
                     latency = 2;
             }
@@ -396,8 +394,7 @@ public:
                     C = false;  // clear the carry bit
                 }
                 r[ins.Rd] = loadWord(addr);
-                if (memaccess)
-                    memaccess(false, addr, 4);
+                onMemAcces(false, addr, 4);
                 version(AreaOptimizedMicroBlaze)
                     latency = 2;
             }
@@ -409,8 +406,7 @@ public:
                 if (ins.Ra == 1)
                     checkStack(addr);
                 storeByte(addr, cast(byte)r[ins.Rd]);
-                if (memaccess)
-                    memaccess(true, addr, 1);
+                onMemAcces(true, addr, 1);
                 version(AreaOptimizedMicroBlaze)
                     latency = 2;
             }
@@ -430,8 +426,7 @@ public:
                     storeByte(addr, word & 0xff);
                     storeByte(addr+1, word >> 8);
                 }
-                if (memaccess)
-                    memaccess(true, addr, 2);
+                onMemAcces(true, addr, 2);
                 version(AreaOptimizedMicroBlaze)
                     latency = 2;
             }
@@ -456,8 +451,7 @@ public:
                     reservation = 0;
                 }
                 storeWord(addr, r[ins.Rd]);
-                if (memaccess)
-                    memaccess(true, addr, 4);
+                onMemAcces(true, addr, 4);
                 version(AreaOptimizedMicroBlaze)
                     latency = 2;
             }
@@ -649,6 +643,12 @@ private:
             if (addr < slr || addr > shr)
                 throw new Exception(format("stack violation [%x] @%x", addr, pc));
         }
+    }
+
+    void onMemAcces()(bool write, uint addr, uint size)
+    {
+        if (memaccess)
+            memaccess(write, addr, size);
     }
 }
 
