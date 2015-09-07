@@ -12,8 +12,8 @@
 			"targetType": "executable",
 			"versions" : [ "BigEndianMicroBlaze", "AreaOptimizedMicroBlaze", "WithLCD", "SixteenBitLCD" ],
 			"dependencies": {
-				"derelict-sdl2" : "~master",
-				"derelict-gl3" : "~master",
+				"derelict-sdl2" : "~>1.9.0",
+				"derelict-gl3": "~>1.0.15"
 			},
 		},
 		{
@@ -26,8 +26,8 @@
 			"targetType": "executable",
 			"versions" : [ "WithLCD" ],
 			"dependencies": {
-				"derelict-sdl2" : "~master",
-				"derelict-gl3" : "~master",
+				"derelict-sdl2" : "~>1.9.0",
+				"derelict-gl3": "~>1.0.15"
 			},
 		},
 	]
